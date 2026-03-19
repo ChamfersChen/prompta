@@ -2,6 +2,9 @@ import hashlib
 import os
 import time
 import uuid
+import re
+import json
+from copy import deepcopy
 
 from src.utils.logging_config import logger
 
@@ -63,3 +66,34 @@ def get_docker_safe_url(base_url):
         base_url = base_url.replace("http://127.0.0.1", "http://host.docker.internal")
         logger.info(f"Running in docker, using {base_url} as base url")
     return base_url
+
+
+def parse_json(text:str) -> dict:
+    matcher = re.findall(r'```json(.*)```', text, flags=re.DOTALL)
+    if not matcher:
+        return {}
+    return json.loads(matcher[0])
+
+
+def format_prompt(prompt: str, slots: dict) -> str:
+    """format prompt with slots
+
+    Parameters
+    ----------
+    prompt : str
+        prompt template
+    slots : dict
+        slots in prompt
+
+    Returns
+    -------
+    str
+        formatted prompt
+    """
+    _prompt = deepcopy(prompt)
+    for k, v in slots.items():
+        tmp_k = "{{" + k + "}}"
+        assert tmp_k in _prompt, f"{tmp_k} not in prompt"
+        _prompt = _prompt.replace(tmp_k, v)
+
+    return _prompt

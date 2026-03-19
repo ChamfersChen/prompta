@@ -7,7 +7,11 @@
 - 重排序模型（Reranker）
 """
 
+import os
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ChatModelProvider(BaseModel):
@@ -48,39 +52,39 @@ class RerankerInfo(BaseModel):
 DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     "openai": ChatModelProvider(
         name="OpenAI",
-        url="https://platform.openai.com/docs/models",
-        base_url="https://api.openai.com/v1",
-        default="gpt-5-mini",
-        env="OPENAI_API_KEY",
-        models=["gpt-5.2", "gpt-5-mini", "gpt-5.2-pro"],
+        # url="http://127.0.0.1:9998/v1/models",
+        url=f"{os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1")}/models",
+        # base_url="http://127.0.0.1:9998/v1",
+        base_url=os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1"),
+        default="../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf",
+        # default="/models/Qwen3-4B-Instruct-2507",
+        env="NO_API_KEY",
+        models=["../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf", "/models/Qwen3-4B-Instruct-2507"],
     ),
-    "deepseek": ChatModelProvider(
-        name="DeepSeek",
-        url="https://platform.deepseek.com/api-docs/zh-cn/pricing",
-        base_url="https://api.deepseek.com/v1",
-        default="deepseek-chat",
-        env="DEEPSEEK_API_KEY",
-        models=["deepseek-chat", "deepseek-reasoner"],
-    ),
-    "zhipu": ChatModelProvider(
-        name="智谱AI (Zhipu)",
-        url="https://open.bigmodel.cn/dev/api",
-        base_url="https://open.bigmodel.cn/api/paas/v4/",
-        default="glm-4.7-flash",
-        env="ZHIPUAI_API_KEY",
-        models=["glm-5", "glm-4.5-air", "glm-4.7-flash"],
-    ),
+    # "deepseek": ChatModelProvider(
+    #     name="DeepSeek",
+    #     url="https://platform.deepseek.com/api-docs/zh-cn/pricing",
+    #     base_url="https://api.deepseek.com/v1",
+    #     default="deepseek-chat",
+    #     env="DEEPSEEK_API_KEY",
+    #     models=["deepseek-chat", "deepseek-reasoner"],
+    # ),
+    # "zhipu": ChatModelProvider(
+    #     name="智谱AI (Zhipu)",
+    #     url="https://open.bigmodel.cn/dev/api",
+    #     base_url="https://open.bigmodel.cn/api/paas/v4/",
+    #     default="glm-4.5-flash",
+    #     env="ZHIPUAI_API_KEY",
+    #     models=["glm-4.6", "glm-4.5-air", "glm-4.5-flash"],
+    # ),
     "siliconflow": ChatModelProvider(
         name="SiliconFlow",
         url="https://cloud.siliconflow.cn/models",
         base_url="https://api.siliconflow.cn/v1",
-        default="Pro/deepseek-ai/DeepSeek-V3.2",
+        default="Qwen/Qwen3-8B",
         env="SILICONFLOW_API_KEY",
         models=[
-            "Pro/deepseek-ai/DeepSeek-V3.2",
-            "Pro/MiniMaxAI/MiniMax-M2.5",
-            "Pro/zai-org/GLM-5",
-            "Pro/moonshotai/Kimi-K2.5",
+            "Qwen/Qwen3-8B",
         ],
     ),
     # "together": ChatModelProvider(
@@ -135,11 +139,22 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     #     default="kimi-latest",
     #     env="MOONSHOT_API_KEY",
     #     models=[
-    #         "kimi-latest",
-    #         "kimi-k2-thinking",
-    #         "kimi-k2-0905-preview",
+    #         "qwen/qwen3-next-80b-a3b-instruct:free",
+    #         "qwen/qwen3-4b:free"
     #     ],
-    # ), # 目前适配有问题 Error code: 400 - {'error': {'message': 'Invalid request: function name is invalid, must start with a letter and can contain letters, numbers, underscores, and dashes', 'type': 'invalid_request_error'}}   # noqa: E501
+    # ),
+    "moonshot": ChatModelProvider(
+        name="月之暗面",
+        url="https://platform.moonshot.cn/docs/overview",
+        base_url="https://api.moonshot.cn/v1",
+        default="kimi-latest",
+        env="MOONSHOT_API_KEY",
+        models=[
+            "kimi-latest",
+            "kimi-k2-thinking",
+            "kimi-k2-0905-preview",
+        ],
+    ), # 目前适配有问题 Error code: 400 - {'error': {'message': 'Invalid request: function name is invalid, must start with a letter and can contain letters, numbers, underscores, and dashes', 'type': 'invalid_request_error'}}   # noqa: E501
     "modelscope": ChatModelProvider(
         name="ModelScope",
         url="https://www.modelscope.cn/docs/model-service/API-Inference/intro",
@@ -156,6 +171,24 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
 # ============================================================
 
 DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
+    # "siliconflow/BAAI/bge-m3": EmbedModelInfo(
+    #     model_id="siliconflow/BAAI/bge-m3",
+    #     name="bge-m3",
+    #     dimension=1024,
+    #     # base_url="http://192.168.137.101:7656/v1/embeddings",
+    #     # base_url="http://localhost:9997/v1/embeddings",
+    #     base_url="https://api.siliconflow.cn/v1/embeddings",
+    #     api_key="no_api_key",
+    # ),
+    "siliconflow/BAAI/local-bge-m3": EmbedModelInfo(
+        model_id="siliconflow/BAAI/local-bge-m3",
+        name="bge-m3",
+        dimension=1024,
+        base_url="http://192.168.137.100:9997/v1/embeddings",
+        # base_url="http://localhost:9997/v1/embeddings",
+        # base_url="https://api.siliconflow.cn/v1/embeddings",
+        api_key="no_api_key",
+    ),
     "siliconflow/BAAI/bge-m3": EmbedModelInfo(
         model_id="siliconflow/BAAI/bge-m3",
         name="BAAI/bge-m3",
@@ -163,49 +196,48 @@ DEFAULT_EMBED_MODELS: dict[str, EmbedModelInfo] = {
         base_url="https://api.siliconflow.cn/v1/embeddings",
         api_key="SILICONFLOW_API_KEY",
     ),
-    "siliconflow/Pro/BAAI/bge-m3": EmbedModelInfo(
-        model_id="siliconflow/Pro/BAAI/bge-m3",
-        name="Pro/BAAI/bge-m3",
-        dimension=1024,
-        base_url="https://api.siliconflow.cn/v1/embeddings",
-        api_key="SILICONFLOW_API_KEY",
-    ),
-    "siliconflow/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
-        model_id="siliconflow/Qwen/Qwen3-Embedding-0.6B",
-        name="Qwen/Qwen3-Embedding-0.6B",
-        dimension=1024,
-        base_url="https://api.siliconflow.cn/v1/embeddings",
-        api_key="SILICONFLOW_API_KEY",
-    ),
-    "vllm/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
-        model_id="vllm/Qwen/Qwen3-Embedding-0.6B",
-        name="Qwen3-Embedding-0.6B",
-        dimension=1024,
-        base_url="http://localhost:8000/v1/embeddings",
-        api_key="no_api_key",
-    ),
-    "ollama/nomic-embed-text": EmbedModelInfo(
-        model_id="ollama/nomic-embed-text",
-        name="nomic-embed-text",
-        dimension=768,
-        base_url="http://localhost:11434/api/embed",
-        api_key="no_api_key",
-    ),
-    "ollama/bge-m3": EmbedModelInfo(
-        model_id="ollama/bge-m3",
-        name="bge-m3",
-        dimension=1024,
-        base_url="http://localhost:11434/api/embed",
-        api_key="no_api_key",
-    ),
-    "dashscope/text-embedding-v4": EmbedModelInfo(
-        model_id="dashscope/text-embedding-v4",
-        name="text-embedding-v4",
-        dimension=1024,
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings",
-        api_key="DASHSCOPE_API_KEY",
-        batch_size=10,
-    ),
+    # "siliconflow/Pro/BAAI/bge-m3": EmbedModelInfo(
+    #     model_id="siliconflow/Pro/BAAI/bge-m3",
+    #     name="Pro/BAAI/bge-m3",
+    #     dimension=1024,
+    #     base_url="https://api.siliconflow.cn/v1/embeddings",
+    #     api_key="SILICONFLOW_API_KEY",
+    # ),
+    # "siliconflow/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
+    #     model_id="siliconflow/Qwen/Qwen3-Embedding-0.6B",
+    #     name="Qwen/Qwen3-Embedding-0.6B",
+    #     dimension=1024,
+    #     base_url="https://api.siliconflow.cn/v1/embeddings",
+    #     api_key="SILICONFLOW_API_KEY",
+    # ),
+    # "vllm/Qwen/Qwen3-Embedding-0.6B": EmbedModelInfo(
+    #     model_id="vllm/Qwen/Qwen3-Embedding-0.6B",
+    #     name="Qwen3-Embedding-0.6B",
+    #     dimension=1024,
+    #     base_url="http://localhost:8000/v1/embeddings",
+    #     api_key="no_api_key",
+    # ),
+    # "ollama/nomic-embed-text": EmbedModelInfo(
+    #     model_id="ollama/nomic-embed-text",
+    #     name="nomic-embed-text",
+    #     dimension=768,
+    #     base_url="http://localhost:11434/api/embed",
+    #     api_key="no_api_key",
+    # ),
+    # "ollama/bge-m3": EmbedModelInfo(
+    #     model_id="ollama/bge-m3",
+    #     name="bge-m3",
+    #     dimension=1024,
+    #     base_url="http://localhost:11434/api/embed",
+    #     api_key="no_api_key",
+    # ),
+    # "dashscope/text-embedding-v4": EmbedModelInfo(
+    #     model_id="dashscope/text-embedding-v4",
+    #     name="text-embedding-v4",
+    #     dimension=1024,
+    #     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings",
+    #     api_key="DASHSCOPE_API_KEY",
+    # ),
 }
 
 

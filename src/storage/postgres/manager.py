@@ -8,16 +8,15 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-from src.utils.singleton import SingletonMeta
+from server.utils.singleton import SingletonMeta
 from src.storage.postgres.models_business import Base as BusinessBase
-from src.storage.postgres.models_knowledge import Base as KnowledgeBase
 from src.utils import logger
 
 # 合并两个 Base
 CombinedBase = declarative_base()
 
 # 继承所有表
-for module in [KnowledgeBase, BusinessBase]:
+for module in [BusinessBase]:
     for table_name in dir(module):
         table = getattr(module, table_name)
         if isinstance(table, type) and hasattr(table, "__tablename__"):
@@ -80,7 +79,6 @@ class PostgresManager(metaclass=SingletonMeta):
         """创建所有表（知识库和业务表）"""
         self._check_initialized()
         async with self.async_engine.begin() as conn:
-            await conn.run_sync(KnowledgeBase.metadata.create_all)
             await conn.run_sync(BusinessBase.metadata.create_all)
         logger.info("PostgreSQL tables created/checked (knowledge + business)")
 
@@ -96,7 +94,6 @@ class PostgresManager(metaclass=SingletonMeta):
         self._check_initialized()
         async with self.async_engine.begin() as conn:
             await conn.run_sync(BusinessBase.metadata.drop_all)
-            await conn.run_sync(KnowledgeBase.metadata.drop_all)
         logger.info("PostgreSQL tables dropped")
 
     @property

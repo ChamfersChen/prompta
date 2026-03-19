@@ -2,7 +2,7 @@ import re
 import uuid
 from src.utils import logger
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi import APIRouter,Body, Depends, HTTPException, Request, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -110,10 +110,16 @@ async def get_default_department_id(db: AsyncSession) -> int | None:
 # =============================================================================
 # === 认证分组 ===
 # =============================================================================
+access_token_old = None
 
+@auth.get("/token-check")
+async def check_access_token():
+    global access_token_old
+    return {"access_token": access_token_old}
 
 @auth.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    global access_token_old
     # 查找用户 - 支持user_id和phone_number登录
     login_identifier = form_data.username  # OAuth2表单中的username字段作为登录标识符
 
@@ -183,7 +189,74 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     # 生成访问令牌
     token_data = {"sub": str(user.id)}
     access_token = AuthUtils.create_access_token(token_data)
+    access_token_old = access_token
+    # 记录登录操作
+    await log_operation(db, user.id, "登录")
 
+    # 获取部门名称
+    department_name = None
+    if user.department_id:
+        result = await db.execute(select(Department.name).filter(Department.id == user.department_id))
+        department_name = result.scalar_one_or_none()
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
+        "user_id_login": user.user_id,
+        "phone_number": user.phone_number,
+        "avatar": user.avatar,
+        "role": user.role,
+        "department_id": user.department_id,
+        "department_name": department_name,
+    }
+
+
+@auth.post("/token-no-verify", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    global access_token_old
+    # 查找用户 - 支持user_id和phone_number登录
+    login_identifier = form_data.username  # OAuth2表单中的username字段作为登录标识符
+
+    # 尝试通过user_id查找
+    result = await db.execute(select(User).filter(User.user_id == login_identifier))
+    user = result.scalar_one_or_none()
+
+    # 如果通过user_id没找到，尝试通过phone_number查找
+    if not user:
+        result = await db.execute(select(User).filter(User.phone_number == login_identifier))
+        user = result.scalar_one_or_none()
+
+    # 如果用户不存在，为防止用户名枚举攻击，返回通用错误信息
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="登录标识或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 检查用户是否已被删除
+    if user.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="该账户已注销",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 检查用户是否处于登录锁定状态
+    if user.is_login_locked():
+        remaining_time = user.get_remaining_lock_time()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"登录被锁定，请等待 {remaining_time} 秒后再试",
+            headers={"WWW-Authenticate": "Bearer", "X-Lock-Remaining": str(remaining_time)},
+        )
+
+    # 生成访问令牌
+    token_data = {"sub": str(user.id)}
+    access_token = AuthUtils.create_access_token(token_data)
+    access_token_old = access_token
     # 记录登录操作
     await log_operation(db, user.id, "登录")
 

@@ -33,7 +33,6 @@ class Config(BaseModel):
     # 基础配置
     # ============================================================
     save_dir: str = Field(default="saves", description="保存目录")
-    model_dir: str = Field(default="", description="本地模型目录")
 
     # ============================================================
     # 功能开关
@@ -41,13 +40,12 @@ class Config(BaseModel):
     enable_reranker: bool = Field(default=False, description="是否开启重排序")
     enable_content_guard: bool = Field(default=False, description="是否启用内容审查")
     enable_content_guard_llm: bool = Field(default=False, description="是否启用LLM内容审查")
-    enable_web_search: bool = Field(default=False, description="是否启用网络搜索")
 
     # ============================================================
     # 模型配置
     # ============================================================
     default_model: str = Field(
-        default="siliconflow/Pro/deepseek-ai/DeepSeek-V3.2",
+        default="openai//models/Qwen3-4B-Instruct-2507",
         description="默认对话模型",
     )
     fast_model: str = Field(
@@ -204,15 +202,6 @@ class Config(BaseModel):
 
     def _handle_environment(self):
         """处理环境变量和运行时状态"""
-        # 处理模型目录
-        self.model_dir = os.environ.get("MODEL_DIR") or self.model_dir
-        if self.model_dir:
-            if os.path.exists(self.model_dir):
-                logger.debug(f"Model directory ({self.model_dir}) contains: {os.listdir(self.model_dir)}")
-            else:
-                logger.warning(
-                    f"Model directory ({self.model_dir}) does not exist. If not configured, please ignore it."
-                )
 
         # 检查模型提供商的环境变量
         self.model_provider_status = {}
@@ -225,10 +214,6 @@ class Config(BaseModel):
                 api_key = os.environ.get(env_var)
                 # 如果获取到的值与环境变量名不同，说明环境变量存在或配置了直接值
                 self.model_provider_status[provider] = bool(api_key or info.custom)
-
-        # 检查网络搜索
-        if os.getenv("TAVILY_API_KEY"):
-            self.enable_web_search = True
 
         # 获取可用的模型提供商
         self.valuable_model_provider = [k for k, v in self.model_provider_status.items() if v]

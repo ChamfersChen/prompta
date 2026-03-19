@@ -3,51 +3,51 @@
 
 # 组织信息
 organization:
-  name: "江南语析"           # 完整组织名称
-  logo: "/favicon.svg"       # Logo文件路径（放在 web/public 目录下）
+  name: "PromptA"           # 完整组织名称
+  logo: "/favicon-96x96.png"       # Logo文件路径（放在 web/public 目录下）
   avatar: "/avatar.jpg"      # 头像文件路径（放在 web/public 目录下）
   login_bg: "/login-bg.jpg"  # 登录背景图片路径（放在 web/public 目录下）
 
 # 项目信息
 branding:
-  name: "Yuxi-Know"
-  title: "Yuxi-Know: 更智能的知识库智能体平台"     # 系统标题
-  subtitle: "大模型驱动的知识库智能体平台"          # 副标题
+  name: "PromptA"
+  title: "PromptA: 你的提示词工作中心"     # 系统标题
+  subtitle: ""          # 副标题
 
 features:
-  - label: "GitHub Stars"
-    value: "4100+"
-    description: "开发者社区的认可与支持"
-    icon: "stars"
-  - label: "已解决 Issues"
-    value: "300+"
-    description: "持续改进和问题解决能力"
-    icon: "issues"
-  - label: "累计 Commits"
-    value: "1300+"
-    description: "活跃的开发迭代和功能更新"
-    icon: "commits"
-  - label: "开源协议"
-    value: "MIT 协议"
-    description: "完全免费，支持商业使用"
-    icon: "license"
+  - label: ""
+    value: "提示词管理"
+    description: ""
+    icon: ""
+  - label: ""
+    value: "多模型测试"
+    description: ""
+    icon: ""
+  # - label: ""
+  #   value: ""
+  #   description: ""
+  #   icon: ""
+  # - label: ""
+  #   value: "智能体集成"
+  #   description: ""
+  #   icon: ""
 
 actions:
-  - name: "演示视频"
-    icon: "video"
-    url: "https://www.bilibili.com/video/BV1DF14BTETq"
-  - name: "文档中心"
-    icon: "docs"
-    url: "https://xerrors.github.io/Yuxi-Know/"
-  - name: "提交 Issue"
-    icon: "issue"
-    url: "https://github.com/xerrors/Yuxi-Know/issues/new/choose"
-  - name: "开发路线图"
-    icon: "roadmap"
-    url: "https://xerrors.github.io/Yuxi-Know/latest/changelog/roadmap.html"
+  # - name: "演示视频"
+  #   icon: "video"
+  #   url: "https://www.bilibili.com/video/BV1DF14BTETq"
+  # - name: "文档中心"
+  #   icon: "docs"
+  #   url: "https://xerrors.github.io/Yuxi-Know/"
+  # - name: "提交 Issue"
+  #   icon: "issue"
+  #   url: "https://github.com/xerrors/Yuxi-Know/issues/new/choose"
+  # - name: "开发路线图"
+  #   icon: "roadmap"
+  #   url: "https://xerrors.github.io/Yuxi-Know/latest/changelog/roadmap.html"
 
 
 
 # 页脚信息
 footer:
-  copyright: "© 江南语析 2026 v0.5.1"
+  copyright: "© PromptA 2026 v0.0.1"
