@@ -45,6 +45,9 @@
         </div>
       </div>
     </template>
+    <template #actions-right>
+      <slot name="input-actions-right"></slot>
+    </template>
   </MessageInputComponent>
 </template>
 

@@ -15,6 +15,7 @@ export * from './department_api' // 部门管理API
 // export * from './skill_api' // Skills API
 // export * from './tool_api' // 工具 API
 export * from './llm_api' // 大模型 API
+export * from './prompt_api'
 
 // 导出基础工具函数
 export {

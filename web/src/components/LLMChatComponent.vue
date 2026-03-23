@@ -105,7 +105,7 @@
             </div>
           </div>
           <div class="bottom" :class="{ 'start-screen': !conversations.length }">
-            <div class="message-input-wrapper">
+            <div class="input-main-area">
               <!-- 加载状态：加载消息 -->
               <div v-if="isLoadingMessages" class="chat-loading">
                 <div class="loading-spinner"></div>
@@ -123,7 +123,7 @@
                 v-model="userInput"
                 :is-loading="isProcessing"
                 :disabled="!currentModelSpec"
-                :send-button-disabled="(!userInput || !currentModelSpec) && !isProcessing"
+                :send-button-disabled="(!userInput || !currentModelSpec || hasUnassignedVariables) && !isProcessing"
                 placeholder="输入问题..."
                 :supports-file-upload="supportsFileUpload"
                 :agent-id="currentLlmId"
@@ -134,7 +134,15 @@
                 @send="handleSendOrStop"
                 @attachment-changed="handleAgentStateRefresh"
                 @toggle-panel="toggleAgentPanel"
-              />
+              >
+                <template #input-actions-right>
+                  <a-tooltip title="提示词库">
+                    <button class="prompt-toggle-btn" @click="togglePromptPanel">
+                      <FolderOpen :size="16" />
+                    </button>
+                  </a-tooltip>
+                </template>
+              </LLMInputArea>
 
               <!-- 示例问题 -->
               <div
@@ -157,6 +165,73 @@
                 <p class="note">请注意辨别内容的可靠性</p>
               </div>
             </div>
+
+          </div>
+        </div>
+        <div v-if="isPromptPanelOpen" class="prompt-sidebar">
+          <div class="prompt-panel-header">
+            <span class="prompt-panel-title">提示词库</span>
+            <button class="prompt-panel-close" @click="togglePromptPanel">
+              <X :size="14" />
+            </button>
+          </div>
+          <div class="prompt-panel-content">
+            <div class="prompt-tree-container">
+              <a-tree
+                v-model:expandedKeys="promptExpandedKeys"
+                :tree-data="promptTreeData"
+                :selected-keys="selectedPromptPath ? [selectedPromptPath] : []"
+                :show-icon="true"
+                @select="handlePromptSelect"
+              >
+                <template #icon="{ isLeaf }">
+                  <FileText v-if="isLeaf" :size="14" />
+                  <FolderOpen v-else :size="14" />
+                </template>
+              </a-tree>
+            </div>
+            <div v-if="promptVariables.length > 0" class="prompt-variables">
+              <div class="prompt-variables-header">
+                <span>变量</span>
+                <div class="prompt-variables-actions">
+                  <a-button size="small" @click="copyRenderedPrompt">
+                    渲染并复制
+                  </a-button>
+                  <a-button size="small" type="primary" :disabled="hasUnassignedVariables" @click="usePromptWithVariables">
+                    应用
+                  </a-button>
+                </div>
+              </div>
+              <div class="prompt-variable-list">
+                <div
+                  v-for="variable in promptVariables"
+                  :key="variable.name"
+                  class="prompt-variable-item"
+                >
+                  <div class="prompt-variable-info">
+                    <span class="prompt-variable-name">{{ variable.name }}</span>
+                    <div class="prompt-variable-actions">
+                      <a-tooltip title="插入到输入框" placement="top">
+                        <button @click="insertPromptVariableToInput(variable.name)" class="action-btn">
+                          <Plus :size="12" />
+                        </button>
+                      </a-tooltip>
+                      <a-tooltip title="删除变量" placement="top">
+                        <button @click="removePromptVariable(variable.name)" class="action-btn delete">
+                          <Trash :size="12" />
+                        </button>
+                      </a-tooltip>
+                    </div>
+                  </div>
+                  <a-input
+                    :value="promptVariableValues[variable.name]"
+                    @update:value="(val) => updatePromptVariableValue(variable.name, val)"
+                    placeholder="变量值"
+                    size="small"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -172,7 +247,7 @@ import LLMMessageComponent from '@/components/LLMMessageComponent.vue'
 import ChatSidebarComponent from '@/components/ChatSidebarComponent.vue'
 import RefsComponent from '@/components/RefsComponent.vue'
 import ModelSelectorComponent from '@/components/ModelSelectorComponent.vue'
-import { PanelLeftOpen, MessageCirclePlus, LoaderCircle, ChevronDown, Bot } from 'lucide-vue-next'
+import { PanelLeftOpen, MessageCirclePlus, LoaderCircle, ChevronDown, Bot, FolderOpen, FileText, Plus, Trash, X } from 'lucide-vue-next'
 import { handleChatError, handleValidationError } from '@/utils/errorHandler'
 import { ScrollController } from '@/utils/scrollController'
 import { AgentValidator } from '@/utils/agentValidator'
@@ -180,7 +255,7 @@ import { AgentValidator } from '@/utils/agentValidator'
 import { useChatUIStore } from '@/stores/chatUI'
 import { storeToRefs } from 'pinia'
 import { MessageProcessor } from '@/utils/messageProcessor'
-import { threadApi, llmThreadApi, llmApi } from '@/apis'
+import { threadApi, llmThreadApi, llmApi, promptApi } from '@/apis'
 import { useApproval } from '@/composables/useApproval'
 import { useLLMStreamHandler } from '@/composables/useLLMStreamHandler'
 
@@ -208,6 +283,162 @@ const chatUIStore = useChatUIStore()
 
 // ==================== LOCAL CHAT & UI STATE ====================
 const userInput = ref('')
+
+const promptTreeData = ref([])
+const promptExpandedKeys = ref([])
+const selectedPromptPath = ref('')
+const promptVariables = ref([])
+const promptVariableValues = ref({})
+const isPromptPanelOpen = ref(false)
+
+const hasUnassignedVariables = computed(() => {
+  if (promptVariables.value.length === 0) return false
+  return promptVariables.value.some(
+    v => !promptVariableValues.value[v.name] || promptVariableValues.value[v.name].trim() === ''
+  )
+})
+
+const normalizePromptTree = (nodes) =>
+  (nodes || []).map((node) => ({
+    title: node.name,
+    key: node.path,
+    isLeaf: !node.is_dir,
+    path: node.path,
+    is_dir: node.is_dir,
+    children: node.is_dir ? normalizePromptTree(node.children || []) : undefined
+  }))
+
+const loadPromptTree = async () => {
+  try {
+    const result = await promptApi.getPromptTree()
+    promptTreeData.value = normalizePromptTree(result?.data || [])
+    const expandKeys = (nodes) =>
+      nodes.flatMap((node) => (node.is_dir ? [node.key, ...expandKeys(node.children || [])] : []))
+    promptExpandedKeys.value = expandKeys(promptTreeData.value)
+  } catch (error) {
+    console.error('加载提示词目录失败:', error)
+  }
+}
+
+const parseVariablesFromContent = (content) => {
+  const found = new Set()
+  const regex = /\{\{([^}]+)\}\}/g
+  const matches = content.matchAll(regex)
+  for (const match of matches) {
+    const name = match[1].trim()
+    if (name) {
+      found.add(name)
+    }
+  }
+  return Array.from(found)
+}
+
+const handlePromptSelect = async (keys, info) => {
+  if (!keys?.length) {
+    selectedPromptPath.value = ''
+    promptVariables.value = []
+    promptVariableValues.value = {}
+    return
+  }
+  const node = info?.node || {}
+  const path = node.path || node.key
+  if (node.is_dir) {
+    selectedPromptPath.value = ''
+    promptVariables.value = []
+    promptVariableValues.value = {}
+    return
+  }
+  selectedPromptPath.value = path
+  try {
+    const result = await promptApi.getPromptFile(path)
+    const content = result?.data?.content || ''
+    userInput.value = content
+    const vars = parseVariablesFromContent(content)
+    promptVariables.value = vars.map(name => ({ name, value: '' }))
+    promptVariableValues.value = {}
+    vars.forEach(name => {
+      promptVariableValues.value[name] = ''
+    })
+  } catch (error) {
+    console.error('读取文件失败:', error)
+    message.error('读取文件失败')
+  }
+}
+
+const updatePromptVariableValue = (name, value) => {
+  promptVariableValues.value[name] = value
+}
+
+const insertPromptVariableToInput = (name) => {
+  userInput.value += `{{${name}}}`
+}
+
+const removePromptVariable = (name) => {
+  promptVariables.value = promptVariables.value.filter(v => v.name !== name)
+  delete promptVariableValues.value[name]
+}
+
+const togglePromptPanel = () => {
+  isPromptPanelOpen.value = !isPromptPanelOpen.value
+  if (isPromptPanelOpen.value && promptTreeData.value.length === 0) {
+    loadPromptTree()
+  }
+}
+
+const usePromptWithVariables = () => {
+  const unassignedVars = promptVariables.value.filter(
+    v => !promptVariableValues.value[v.name] || promptVariableValues.value[v.name].trim() === ''
+  )
+  
+  if (unassignedVars.length > 0) {
+    message.warning(`以下变量未赋值: ${unassignedVars.map(v => v.name).join(', ')}`)
+  }
+
+  let content = userInput.value
+  promptVariables.value.forEach(variable => {
+    const value = promptVariableValues.value[variable.name]
+    if (value !== undefined && value !== '') {
+      const regex = new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g')
+      content = content.replace(regex, value)
+    }
+  })
+  
+  userInput.value = content
+  promptVariables.value = []
+  promptVariableValues.value = {}
+  message.success('已应用变量')
+}
+
+const renderPromptWithVariables = () => {
+  let content = userInput.value
+  promptVariables.value.forEach(variable => {
+    const value = promptVariableValues.value[variable.name]
+    if (value !== undefined && value !== '') {
+      const regex = new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g')
+      content = content.replace(regex, value)
+    }
+  })
+  return content
+}
+
+const copyRenderedPrompt = async () => {
+  const unassignedVars = promptVariables.value.filter(
+    v => !promptVariableValues.value[v.name] || promptVariableValues.value[v.name].trim() === ''
+  )
+  
+  if (unassignedVars.length > 0) {
+    message.warning(`以下变量未赋值: ${unassignedVars.map(v => v.name).join(', ')}`)
+  }
+  
+  const renderedContent = renderPromptWithVariables()
+  try {
+    await navigator.clipboard.writeText(renderedContent)
+    message.success('已复制渲染后的内容')
+  } catch (error) {
+    message.error('复制失败')
+  }
+}
+
 const useRunsApi =
   import.meta.env.VITE_USE_RUNS_API === 'true' &&
   localStorage.getItem('force_legacy_stream') !== 'true'
@@ -1867,6 +2098,160 @@ watch(
   }
 }
 
+.prompt-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0;
+}
+
+.prompt-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  border-radius: 4px;
+  &:hover {
+    background: var(--gray-100);
+    color: var(--gray-800);
+  }
+}
+
+.prompt-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--gray-0);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow: hidden;
+
+  .prompt-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--gray-200);
+
+    .prompt-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+
+    .prompt-panel-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--gray-500);
+      cursor: pointer;
+      border-radius: 4px;
+      &:hover {
+        background: var(--gray-100);
+        color: var(--gray-700);
+      }
+    }
+  }
+
+  .prompt-panel-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .prompt-tree-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    max-height: 250px;
+  }
+
+  .prompt-variables {
+    border-top: 1px solid var(--gray-200);
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+
+    .prompt-variables-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+
+      .prompt-variables-actions {
+        display: flex;
+        gap: 6px;
+      }
+    }
+
+    .prompt-variable-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .prompt-variable-item {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 4px;
+      padding: 8px;
+
+      .prompt-variable-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+
+        .prompt-variable-name {
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--gray-700);
+          font-family: monospace;
+        }
+
+        .prompt-variable-actions {
+          display: flex;
+          gap: 4px;
+
+          .action-btn {
+            background: none;
+            border: none;
+            padding: 2px;
+            cursor: pointer;
+            color: var(--gray-500);
+            display: flex;
+            align-items: center;
+            border-radius: 2px;
+
+            &:hover {
+              color: var(--gray-700);
+              background-color: var(--gray-100);
+            }
+
+            &.delete:hover {
+              color: #ef4444;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 .chat-box {
   width: 100%;
   max-width: 800px;
@@ -1891,11 +2276,36 @@ watch(
   padding: 4px 1rem 0 1rem;
   background: var(--gray-0);
   z-index: 1000;
+  display: flex;
+  gap: 12px;
 
   .message-input-wrapper {
+    flex: 1;
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
+
+    .bottom-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .note {
+      font-size: small;
+      color: var(--gray-300);
+      margin: 4px 0;
+      user-select: none;
+    }
+  }
+
+  .input-main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
 
     .bottom-actions {
       display: flex;
