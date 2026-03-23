@@ -194,7 +194,7 @@
               <div class="prompt-variables-header">
                 <span>变量</span>
                 <div class="prompt-variables-actions">
-                  <a-button size="small" @click="copyRenderedPrompt">
+                  <a-button size="small" :disabled="hasUnassignedVariables" @click="copyRenderedPrompt">
                     渲染并复制
                   </a-button>
                   <a-button size="small" type="primary" :disabled="hasUnassignedVariables" @click="usePromptWithVariables">
