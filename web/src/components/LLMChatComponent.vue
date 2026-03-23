@@ -1642,6 +1642,18 @@ const handleSendMessage = async ({ image } = {}) => {
 
 // 发送或中断
 const handleSendOrStop = async (payload) => {
+  if (promptVariables.value.length > 0 && hasUnassignedVariables.value) {
+    message.warning(`请先为所有变量赋值，未赋值的变量: ${promptVariables.value.filter(v => !promptVariableValues.value[v.name] || promptVariableValues.value[v.name].trim() === '').map(v => v.name).join(', ')}`)
+    return
+  }
+
+  if (promptVariables.value.length > 0 && !hasUnassignedVariables.value) {
+    const renderedContent = renderPromptWithVariables()
+    userInput.value = renderedContent
+    promptVariables.value = []
+    promptVariableValues.value = {}
+  }
+
   const threadId = currentChatId.value
   const threadState = getThreadState(threadId)
   if (isProcessing.value && threadState) {
