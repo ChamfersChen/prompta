@@ -145,15 +145,6 @@ async def chat_llm(
     # response = await model.call(query, stream=True)
     return StreamingResponse(
         llm_chat_stream(model, query, meta, config=config, db=db),
-        # stream_agent_chat(
-        #     agent_id=agent_id,
-        #     query=query,
-        #     config=config,
-        #     meta=meta,
-        #     image_content=image_content,
-        #     current_user=current_user,
-        #     db=db,
-        # ),
         media_type="application/json",
     )
 
