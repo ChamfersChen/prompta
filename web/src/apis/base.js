@@ -136,13 +136,26 @@ export async function apiRequest(url, options = {}, requiresAuth = true, respons
  * @param {string} responseType - 响应类型: 'json' | 'text' | 'blob'
  * @returns {Promise} - 请求结果
  */
-export function apiGet(url, options = {}, requiresAuth = true, responseType = 'json') {
-  return apiRequest(url, { method: 'GET', ...options }, requiresAuth, responseType)
+export function apiGet(url, params = {}, requiresAuth = true, responseType = 'json') {
+  // 将参数附加到URL
+  if (params && Object.keys(params).length > 0) {
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value)
+      }
+    })
+    const queryString = searchParams.toString()
+    if (queryString) {
+      url = `${url}?${queryString}`
+    }
+  }
+  return apiRequest(url, { method: 'GET' }, requiresAuth, responseType)
 }
 
-export function apiAdminGet(url, options = {}, responseType = 'json') {
+export function apiAdminGet(url, params = {}, responseType = 'json') {
   checkAdminPermission()
-  return apiGet(url, options, true, responseType)
+  return apiGet(url, params, true, responseType)
 }
 
 export function apiSuperAdminGet(url, options = {}, responseType = 'json') {

@@ -33,6 +33,12 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('../views/RegisterView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
       path: '/llm',
       name: 'LlmMain',
       component: AppLayout,
@@ -41,7 +47,7 @@ const router = createRouter({
           path: '',
           name: 'LlmComp',
           component: () => import('../views/LlmView.vue'),
-          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: true }
+          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: false}
         }
       ]
     },
@@ -56,10 +62,23 @@ const router = createRouter({
           component: () => import('../views/ExtensionsView.vue'),
           meta: {
             keepAlive: false,
-            requiresAuth: true,
-            requiresAdmin: true,
-            requiresSuperAdmin: true
+            requiresAuth: false,
+            requiresAdmin: false,
+            requiresSuperAdmin: false
           }
+        }
+      ]
+    },
+    {
+      path: '/market',
+      name: 'market',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'TemplateMarket',
+          component: () => import('../views/TemplateMarketView.vue'),
+          meta: { keepAlive: true, requiresAuth: false }
         }
       ]
     },

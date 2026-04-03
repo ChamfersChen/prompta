@@ -4,7 +4,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import {
   GithubOutlined,
 } from '@ant-design/icons-vue'
-import { Bot, Waypoints, LibraryBig, BarChart3, CircleCheck, Database, Blocks } from 'lucide-vue-next'
+import { Bot, Waypoints, LibraryBig, BarChart3, CircleCheck, Database, Blocks, Store } from 'lucide-vue-next'
 
 import { useConfigStore } from '@/stores/config'
 // import { useDatabaseStore } from '@/stores/database'
@@ -58,7 +58,7 @@ onMounted(async () => {
   // 加载信息配置
   await infoStore.loadInfoConfig()
   // 加载其他配置
-  getRemoteConfig()
+  // getRemoteConfig()
 })
 
 // 打印当前页面的路由信息，使用 vue3 的 setup composition API
@@ -78,6 +78,11 @@ const mainList = computed(() => {
       path: '/extensions',
       icon: Blocks,
       activeIcon: Blocks
+    },{
+      name: '提示词市场',
+      path: '/market',
+      icon: Store,
+      activeIcon: Store
     }
   ]
 

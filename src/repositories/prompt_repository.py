@@ -16,18 +16,28 @@ class PromptRepository:
         result = await self.db.execute(select(Prompt).order_by(Prompt.updated_at.desc(), Prompt.id.desc()))
         return list(result.scalars().all())
 
-    async def get_by_id(self, id:int) -> Prompt | None:
-        result = await self.db.execute(select(Prompt).where(Prompt.id== id))
+    async def list_by_user(self, username: str) -> list[Prompt]:
+        result = await self.db.execute(
+            select(Prompt).where(Prompt.created_by == username).order_by(Prompt.updated_at.desc(), Prompt.id.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_by_id(self, id: int) -> Prompt | None:
+        result = await self.db.execute(select(Prompt).where(Prompt.id == id))
         return result.scalar_one_or_none()
-    
-    async def get_by_path(self, path:str) -> Prompt | None:
-        result = await self.db.execute(select(Prompt).where(Prompt.path==path))
+
+    async def get_by_name_path(self,name:str, path: str) -> Prompt | None:
+        result = await self.db.execute(select(Prompt).where(Prompt.path == path).where(Prompt.created_by== name))
+        return result.scalar_one_or_none()
+
+    async def get_by_path(self, path: str) -> Prompt | None:
+        result = await self.db.execute(select(Prompt).where(Prompt.path == path))
         return result.scalar_one_or_none()
 
     async def exists_id(self, id: int) -> bool:
         return (await self.get_by_id(id)) is not None
 
-    async def update(self, path:str, content:str, updated_by:str|None) -> Prompt:
+    async def update(self, path: str, content: str, updated_by: str | None) -> Prompt:
         item = await self.get_by_path(path)
         if item is None:
             raise ValueError(f"Prompt with path '{path}' not found")
@@ -37,7 +47,6 @@ class PromptRepository:
         await self.db.commit()
         await self.db.refresh(item)
         return item
-
 
     async def create(
         self,
@@ -100,6 +109,6 @@ class PromptRepository:
         await self.db.delete(item)
         await self.db.commit()
 
-    async def delete_by_path(self, path:str) -> None:
-        await self.db.delete(await self.get_by_path(path))
+    async def delete_by_name_path(self,name:str, path: str) -> None:
+        await self.db.delete(await self.get_by_name_path(name,path))
         await self.db.commit()

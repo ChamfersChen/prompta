@@ -42,7 +42,14 @@
           >
             <span>提示词管理</span>
           </router-link>
-          </nav>
+          <router-link
+            to="/market"
+            class="nav-link"
+            v-if="userStore.isLoggedIn"
+          >
+            <span>提示词市场</span>
+          </router-link>
+        </nav>
         <div class="header-actions">
           <div class="github-link">
             <a href="https://github.com/ChamfersChen/prompta" target="_blank">
@@ -195,11 +202,11 @@ const goToChat = async () => {
   }
 
   // 根据用户角色进行跳转
-  if (userStore.isAdmin) {
-    // 管理员用户跳转到聊天页面
-    router.push('/llm')
-    return
-  }
+  // if (userStore.isAdmin) {
+  //   // 管理员用户跳转到聊天页面
+  router.push('/llm')
+  //   return
+  // }
 
   // // 普通用户跳转到默认智能体
   // try {

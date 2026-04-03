@@ -2,7 +2,7 @@ import re
 import uuid
 from src.utils import logger
 
-from fastapi import APIRouter,Body, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -94,6 +94,19 @@ class UserIdGeneration(BaseModel):
     is_available: bool
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    confirm_password: str
+
+
+class RegisterResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: int | None = None
+    username: str | None = None
+
+
 # =============================================================================
 # === 工具函数 ===
 # =============================================================================
@@ -112,10 +125,12 @@ async def get_default_department_id(db: AsyncSession) -> int | None:
 # =============================================================================
 access_token_old = None
 
+
 @auth.get("/token-check")
 async def check_access_token():
     global access_token_old
     return {"access_token": access_token_old}
+
 
 @auth.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
@@ -277,6 +292,80 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         "role": user.role,
         "department_id": user.department_id,
         "department_name": department_name,
+    }
+
+
+# 路由：用户注册
+@auth.post("/register", response_model=RegisterResponse)
+async def register(
+    register_data: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    # 验证密码确认
+    if register_data.password != register_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="两次输入的密码不一致",
+        )
+
+    # 验证密码长度
+    if len(register_data.password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="密码长度不能少于6位",
+        )
+
+    # 验证用户名
+    is_valid, error_msg = validate_username(register_data.username)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg,
+        )
+
+    user_repo = UserRepository()
+
+    # 检查用户名是否已存在
+    users = await user_repo.list_users()
+    if any(u.username == register_data.username for u in users):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户名已存在",
+        )
+
+    # 生成唯一的user_id
+    existing_user_ids = await user_repo.get_all_user_ids()
+    user_id = generate_unique_user_id(register_data.username, existing_user_ids)
+
+    # 创建新用户
+    hashed_password = AuthUtils.hash_password(register_data.password)
+
+    # 获取默认部门
+    department_id = None
+    result = await db.execute(select(Department).filter(Department.name == "默认部门"))
+    default_dept = result.scalar_one_or_none()
+    if default_dept:
+        department_id = default_dept.id
+
+    new_user = await user_repo.create(
+        {
+            "username": register_data.username,
+            "user_id": user_id,
+            "phone_number": None,
+            "password_hash": hashed_password,
+            "role": "user",
+            "department_id": department_id,
+        }
+    )
+
+    # 记录注册操作
+    await log_operation(db, new_user.id, "注册", f"新用户注册: {register_data.username}")
+
+    return {
+        "success": True,
+        "message": "注册成功",
+        "user_id": new_user.id,
+        "username": new_user.username,
     }
 
 

@@ -405,150 +405,6 @@ class MessageFeedback(Base):
         }
 
 
-# class MCPServer(Base):
-#     """MCP 服务器配置模型"""
-
-#     __tablename__ = "mcp_servers"
-
-#     # 核心字段 - name 作为主键
-#     name = Column(String(100), primary_key=True, comment="服务器名称（唯一标识）")
-#     description = Column(String(500), nullable=True, comment="描述")
-
-#     # 连接配置
-#     transport = Column(String(20), nullable=False, comment="传输类型：sse/streamable_http/stdio")
-#     url = Column(String(500), nullable=True, comment="服务器 URL（sse/streamable_http）")
-#     command = Column(String(500), nullable=True, comment="命令（stdio）")
-#     args = Column(JSON, nullable=True, comment="命令参数数组（stdio）")
-#     env = Column(JSON, nullable=True, comment="环境变量（stdio）")
-#     headers = Column(JSON, nullable=True, comment="HTTP 请求头")
-#     timeout = Column(Integer, nullable=True, comment="HTTP 超时时间（秒）")
-#     sse_read_timeout = Column(Integer, nullable=True, comment="SSE 读取超时（秒）")
-
-#     # UI 增强字段
-#     tags = Column(JSON, nullable=True, comment="标签数组")
-#     icon = Column(String(50), nullable=True, comment="图标（emoji）")
-
-#     # 状态字段
-#     enabled = Column(Integer, nullable=False, default=1, comment="是否启用：1=是，0=否")
-#     disabled_tools = Column(JSON, nullable=True, comment="禁用的工具名称列表")
-
-#     # 用户追踪
-#     created_by = Column(String(100), nullable=False, comment="创建人用户名")
-#     updated_by = Column(String(100), nullable=False, comment="修改人用户名")
-
-#     # 时间戳
-#     created_at = Column(DateTime, default=utc_now_naive, comment="创建时间")
-#     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive, comment="更新时间")
-
-#     def to_dict(self) -> dict[str, Any]:
-#         return {
-#             "name": self.name,
-#             "description": self.description,
-#             "transport": self.transport,
-#             "url": self.url,
-#             "command": self.command,
-#             "args": self.args or [],
-#             "env": self.env or {},
-#             "headers": self.headers or {},
-#             "timeout": self.timeout,
-#             "sse_read_timeout": self.sse_read_timeout,
-#             "tags": self.tags or [],
-#             "icon": self.icon,
-#             "enabled": bool(self.enabled),
-#             "disabled_tools": self.disabled_tools or [],
-#             "created_by": self.created_by,
-#             "updated_by": self.updated_by,
-#             "created_at": format_utc_datetime(self.created_at),
-#             "updated_at": format_utc_datetime(self.updated_at),
-#         }
-
-#     def to_mcp_config(self) -> dict[str, Any]:
-#         """转换为 MCP 配置格式（用于加载到 MCP_SERVERS 缓存）"""
-#         import json
-
-#         config = {"transport": self.transport}
-#         if self.url:
-#             config["url"] = self.url
-#         if self.command:
-#             config["command"] = self.command
-#         # args 只用于 stdio 传输类型，必须是列表
-#         if self.transport == "stdio" and self.args:
-#             if isinstance(self.args, list):
-#                 config["args"] = self.args
-#             elif isinstance(self.args, str):
-#                 try:
-#                     config["args"] = json.loads(self.args)
-#                 except json.JSONDecodeError:
-#                     pass
-#         if self.transport == "stdio" and self.env:
-#             if isinstance(self.env, dict):
-#                 config["env"] = self.env
-#             elif isinstance(self.env, str):
-#                 try:
-#                     config["env"] = json.loads(self.env)
-#                 except json.JSONDecodeError:
-#                     pass
-#         # headers 只用于 sse/streamable_http 传输类型
-#         if self.transport in ("sse", "streamable_http") and self.headers:
-#             if isinstance(self.headers, dict):
-#                 config["headers"] = self.headers
-#             elif isinstance(self.headers, str):
-#                 try:
-#                     config["headers"] = json.loads(self.headers)
-#                 except json.JSONDecodeError:
-#                     pass
-#         if self.timeout is not None:
-#             config["timeout"] = self.timeout
-#         if self.sse_read_timeout is not None:
-#             config["sse_read_timeout"] = self.sse_read_timeout
-#         if self.disabled_tools:
-#             config["disabled_tools"] = self.disabled_tools
-#         return config
-
-
-# class TaskRecord(Base):
-#     __tablename__ = "tasks"
-
-#     id = Column(String(32), primary_key=True)
-#     name = Column(String(255), nullable=False)
-#     type = Column(String(64), nullable=False, index=True)
-#     status = Column(String(32), nullable=False, default="pending", index=True)
-#     progress = Column(Float, nullable=False, default=0.0)
-#     message = Column(Text, nullable=False, default="")
-#     payload = Column(JSON, nullable=True)
-#     result = Column(JSON, nullable=True)
-#     error = Column(Text, nullable=True)
-#     cancel_requested = Column(Integer, nullable=False, default=0)
-#     created_at = Column(DateTime, default=utc_now_naive, index=True)
-#     updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
-#     started_at = Column(DateTime, nullable=True)
-#     completed_at = Column(DateTime, nullable=True)
-
-#     def to_dict(self) -> dict[str, Any]:
-#         return {
-#             "id": self.id,
-#             "name": self.name,
-#             "type": self.type,
-#             "status": self.status,
-#             "progress": self.progress,
-#             "message": self.message,
-#             "created_at": format_utc_datetime(self.created_at),
-#             "updated_at": format_utc_datetime(self.updated_at),
-#             "started_at": format_utc_datetime(self.started_at),
-#             "completed_at": format_utc_datetime(self.completed_at),
-#             "payload": self.payload or {},
-#             "result": self.result,
-#             "error": self.error,
-#             "cancel_requested": bool(self.cancel_requested),
-#         }
-
-#     def to_summary_dict(self) -> dict[str, Any]:
-#         data = self.to_dict()
-#         data.pop("payload", None)
-#         data.pop("result", None)
-#         return data
-
-
 class AgentRun(Base):
     """AgentRun table - 运行任务表"""
 
@@ -591,6 +447,7 @@ class AgentRun(Base):
             "updated_at": format_utc_datetime(self.updated_at),
         }
 
+
 class Prompt(Base):
     """Prompt 元数据模型（内容存文件系统，索引存数据库）"""
 
@@ -619,3 +476,144 @@ class Prompt(Base):
             "created_at": format_utc_datetime(self.created_at),
             "updated_at": format_utc_datetime(self.updated_at),
         }
+
+
+class Template(Base):
+    """提示词模板模型（发布到市场的模板）"""
+
+    __tablename__ = "templates"
+
+    id = Column(String(36), primary_key=True, comment="UUID")
+    name = Column(String(128), nullable=False, comment="模板名称")
+    category = Column(String(64), nullable=False, default="writing", comment="分类")
+    description = Column(Text, nullable=True, comment="模板描述")
+    tags = Column(JSON, nullable=True, comment="标签列表")
+    content = Column(Text, nullable=False, comment="Prompt 内容")
+    variables = Column(JSON, nullable=True, comment="变量定义列表")
+    is_public = Column(Boolean, nullable=False, default=False, comment="是否公开到社区")
+    is_official = Column(Boolean, nullable=False, default=False, comment="是否为官方模板")
+    source_path = Column(String(512), nullable=True, comment="源文件路径")
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, comment="创建者ID")
+    usage_count = Column(Integer, nullable=False, default=0, comment="使用次数")
+    favorite_count = Column(Integer, nullable=False, default=0, comment="收藏次数")
+    rating = Column(Float, nullable=False, default=0.0, comment="平均评分")
+    rating_count = Column(Integer, nullable=False, default=0, comment="评分人数")
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    # 关联
+    owner = relationship("User")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "category": self.category,
+            "description": self.description,
+            "tags": self.tags or [],
+            "content": self.content,
+            "variables": self.variables or [],
+            "is_public": self.is_public,
+            "is_official": self.is_official,
+            "source_path": self.source_path,
+            "owner_id": self.owner_id,
+            "author": self.owner.username if self.owner else "匿名",
+            "usageCount": self.usage_count,
+            "rating": self.rating,
+            "ratingCount": self.rating_count,
+            "created_at": format_utc_datetime(self.created_at),
+            "updated_at": format_utc_datetime(self.updated_at),
+        }
+
+    def to_list_dict(self) -> dict[str, Any]:
+        """列表展示用（不包含 content）"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "category": self.category,
+            "description": self.description,
+            "tags": self.tags or [],
+            "variables": self.variables or [],
+            "is_public": self.is_public,
+            "is_official": self.is_official,
+            "source_path": self.source_path,
+            "author": self.owner.username if self.owner else "匿名",
+            "usageCount": self.usage_count,
+            "rating": self.rating,
+            "ratingCount": self.rating_count,
+            "created_at": format_utc_datetime(self.created_at),
+            "updated_at": format_utc_datetime(self.updated_at),
+        }
+
+
+class TemplateFavorite(Base):
+    """模板收藏模型"""
+
+    __tablename__ = "template_favorites"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    template_id = Column(String(36), ForeignKey("templates.id"), nullable=False)
+    created_at = Column(DateTime, default=utc_now_naive)
+
+    __table_args__ = (UniqueConstraint("user_id", "template_id", name="uq_user_template_favorite"),)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "template_id": self.template_id,
+            "created_at": format_utc_datetime(self.created_at),
+        }
+
+
+class TemplateRating(Base):
+    """模板评分模型"""
+
+    __tablename__ = "template_ratings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    template_id = Column(String(36), ForeignKey("templates.id"), nullable=False)
+    rating = Column(Integer, nullable=False, comment="评分 1-5")
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    __table_args__ = (UniqueConstraint("user_id", "template_id", name="uq_user_template_rating"),)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "template_id": self.template_id,
+            "rating": self.rating,
+            "created_at": format_utc_datetime(self.created_at),
+            "updated_at": format_utc_datetime(self.updated_at),
+        }
+
+
+class TemplateComment(Base):
+    """模板评论模型"""
+
+    __tablename__ = "template_comments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    template_id = Column(String(36), ForeignKey("templates.id"), nullable=False)
+    content = Column(Text, nullable=False, comment="评论内容")
+    created_at = Column(DateTime, default=utc_now_naive)
+    updated_at = Column(DateTime, default=utc_now_naive, onupdate=utc_now_naive)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "template_id": self.template_id,
+            "author": self.owner.username if self.owner else "匿名",
+            "content": self.content,
+            "created_at": format_utc_datetime(self.created_at),
+            "updated_at": format_utc_datetime(self.updated_at),
+        }
+
+    # 关联 owner
+    owner = relationship("User")

@@ -10,13 +10,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.auth_middleware import get_admin_user, get_db, get_superadmin_user, get_required_user
+from server.utils.auth_middleware import get_current_user
 from src.services.prompt_service import (
     create_prompt_node,
     delete_prompt_file,
     get_prompt_tree,
     read_prompt_file,
-    update_prompt_file
+    update_prompt_file,
 )
+from src.repositories.prompt_repository import PromptRepository
 from src.storage.postgres.models_business import User
 from src.utils.logging_config import logger
 
@@ -39,14 +41,19 @@ def _raise_from_value_error(e: ValueError) -> None:
     status_code = 404 if "不存在" in message else 400
     raise HTTPException(status_code=status_code, detail=message)
 
+def _check_prompt_access(item, current_user: User) -> bool:
+    """检查用户是否有权限访问该prompt"""
+    return item.created_by == current_user.username
+
+
 @prompts.get("/tree")
 async def get_prompt_tree_route(
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取技能目录树（仅超级管理员）。"""
+    """获取当前用户的提示词目录树。"""
     try:
-        tree = await get_prompt_tree(db)
+        tree = await get_prompt_tree(db, username=current_user.username)
         return {"success": True, "data": tree}
     except ValueError as e:
         _raise_from_value_error(e)
@@ -60,13 +67,17 @@ async def get_prompt_tree_route(
 @prompts.get("/file")
 async def get_prompt_file_route(
     path: str = Query(..., description="相对 prompt 根目录路径"),
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """读取技能文本文件（仅超级管理员）。"""
+    """读取当前用户的提示词文件。"""
     try:
-        data = await read_prompt_file(db, path)
-        return {"success": True, "data": data}
+        repo = PromptRepository(db)
+        item = await repo.get_by_name_path(current_user.username,path)
+        if not item or not _check_prompt_access(item, current_user):
+            raise HTTPException(status_code=404, detail="文件不存在")
+        data = await read_prompt_file(db, current_user.username, path)
+        return {"success": True, "data": {"path": path, "content": data.get("content", "")}}
     except ValueError as e:
         _raise_from_value_error(e)
     except HTTPException:
@@ -75,13 +86,14 @@ async def get_prompt_file_route(
         logger.error(f"Failed to read prompt file '{path}': {e}")
         raise HTTPException(status_code=500, detail="读取技能文件失败")
 
+
 @prompts.post("/file")
 async def create_prompt_file_route(
     payload: PromptNodeCreateRequest,
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """创建技能文件或目录（仅超级管理员）。"""
+    """创建提示词文件或目录。"""
     try:
         await create_prompt_node(
             db,
@@ -89,6 +101,7 @@ async def create_prompt_file_route(
             is_dir=payload.is_dir,
             content=payload.content,
             updated_by=current_user.username,
+            username=current_user.username,
         )
         return {"success": True}
     except ValueError as e:
@@ -99,17 +112,23 @@ async def create_prompt_file_route(
         logger.error(f"Failed to create prompt node '{payload.path}': {e}")
         raise HTTPException(status_code=500, detail="创建技能文件失败")
 
+
 @prompts.put("/file")
 async def update_prompt_file_route(
     payload: PromptFileUpdateRequest,
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """更新技能文本文件（仅超级管理员）。"""
+    """更新提示词文本文件。"""
     try:
+        user_path = _get_user_path(payload.path, current_user)
+        repo = PromptRepository(db)
+        item = await repo.get_by_path(user_path)
+        if not item or not _check_prompt_access(item, current_user):
+            raise HTTPException(status_code=404, detail="文件不存在")
         await update_prompt_file(
             db,
-            path=payload.path,
+            path=user_path,
             content=payload.content,
             updated_by=current_user.username,
         )
@@ -123,16 +142,19 @@ async def update_prompt_file_route(
         raise HTTPException(status_code=500, detail="更新技能文件失败")
 
 
-
 @prompts.delete("/file")
 async def delete_prompt_file_route(
     path: str = Query(..., description="相对 prompt 根目录路径"),
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """删除技能文件或目录（仅超级管理员）。"""
+    """删除提示词文件或目录。"""
     try:
-        await delete_prompt_file(db, path=path)
+        repo = PromptRepository(db)
+        item = await repo.get_by_name_path(current_user.username, path)
+        if not item or not _check_prompt_access(item, current_user):
+            raise HTTPException(status_code=404, detail="文件不存在")
+        await delete_prompt_file(db, name=current_user.username, path=path)
         return {"success": True}
     except ValueError as e:
         _raise_from_value_error(e)

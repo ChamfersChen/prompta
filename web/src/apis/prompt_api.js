@@ -3,7 +3,11 @@ import {
   apiSuperAdminDelete,
   apiSuperAdminGet,
   apiSuperAdminPost,
-  apiSuperAdminPut
+  apiSuperAdminPut,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete
 } from './base'
 
 const BASE_URL = '/api/system/prompts'
@@ -27,11 +31,11 @@ export const getSkillTree = async (slug) => {
 }
 
 export const getPromptTree = async () => {
-  return apiSuperAdminGet(`${BASE_URL}/tree`)
+  return apiGet(`${BASE_URL}/tree`)
 }
 
 export const createPromptFile = async (payload) => {
-  return apiSuperAdminPost(`${BASE_URL}/file`, payload)
+  return apiPost(`${BASE_URL}/file`, payload)
 }
 
 export const getSkillFile = async (slug, path) => {
@@ -41,9 +45,7 @@ export const getSkillFile = async (slug, path) => {
 }
 
 export const getPromptFile = async (path) => {
-  return apiSuperAdminGet(
-    `${BASE_URL}/file?path=${encodeURIComponent(path)}`
-  )
+  return apiGet(`${BASE_URL}/file?path=${encodeURIComponent(path)}`)
 }
 
 export const createSkillFile = async (slug, payload) => {
@@ -56,7 +58,7 @@ export const updateSkillFile = async (slug, payload) => {
 }
 
 export const updatePromptFile = async (payload) => {
-  return apiSuperAdminPut(`${BASE_URL}/file`, payload)
+  return apiPut(`${BASE_URL}/file`, payload)
 }
 
 export const updateSkillDependencies = async (slug, payload) => {
@@ -70,9 +72,7 @@ export const deleteSkillFile = async (slug, path) => {
 }
 
 export const deletePromptFile = async (path) => {
-  return apiSuperAdminDelete(
-    `${BASE_URL}/file?path=${encodeURIComponent(path)}`
-  )
+  return apiDelete(`${BASE_URL}/file?path=${encodeURIComponent(path)}`)
 }
 
 export const exportSkill = async (slug) => {

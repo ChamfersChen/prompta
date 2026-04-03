@@ -3,60 +3,64 @@ import {
   apiSuperAdminDelete,
   apiSuperAdminGet,
   apiSuperAdminPost,
-  apiSuperAdminPut
+  apiSuperAdminPut,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete
 } from './base'
 
 const BASE_URL = '/api/system/skills'
 
 export const listSkills = async () => {
-  return apiAdminGet(BASE_URL)
+  return apiGet(BASE_URL)
 }
 
 export const importSkillZip = async (file) => {
   const formData = new FormData()
   formData.append('file', file)
-  return apiSuperAdminPost(`${BASE_URL}/import`, formData)
+  return apiPost(`${BASE_URL}/import`, formData)
 }
 
 export const getSkillDependencyOptions = async () => {
-  return apiSuperAdminGet(`${BASE_URL}/dependency-options`)
+  return apiGet(`${BASE_URL}/dependency-options`)
 }
 
 export const getSkillTree = async (slug) => {
-  return apiSuperAdminGet(`${BASE_URL}/${encodeURIComponent(slug)}/tree`)
+  return apiGet(`${BASE_URL}/${encodeURIComponent(slug)}/tree`)
 }
 
 
 export const getSkillFile = async (slug, path) => {
-  return apiSuperAdminGet(
+  return apiGet(
     `${BASE_URL}/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`
   )
 }
 
 export const createSkillFile = async (slug, payload) => {
-  return apiSuperAdminPost(`${BASE_URL}/${encodeURIComponent(slug)}/file`, payload)
+  return apiPost(`${BASE_URL}/${encodeURIComponent(slug)}/file`, payload)
 }
 
 export const updateSkillFile = async (slug, payload) => {
-  return apiSuperAdminPut(`${BASE_URL}/${encodeURIComponent(slug)}/file`, payload)
+  return apiPut(`${BASE_URL}/${encodeURIComponent(slug)}/file`, payload)
 }
 
 export const updateSkillDependencies = async (slug, payload) => {
-  return apiSuperAdminPut(`${BASE_URL}/${encodeURIComponent(slug)}/dependencies`, payload)
+  return apiPut(`${BASE_URL}/${encodeURIComponent(slug)}/dependencies`, payload)
 }
 
 export const deleteSkillFile = async (slug, path) => {
-  return apiSuperAdminDelete(
+  return apiDelete(
     `${BASE_URL}/${encodeURIComponent(slug)}/file?path=${encodeURIComponent(path)}`
   )
 }
 
 export const exportSkill = async (slug) => {
-  return apiSuperAdminGet(`${BASE_URL}/${encodeURIComponent(slug)}/export`, {}, 'blob')
+  return apiGet(`${BASE_URL}/${encodeURIComponent(slug)}/export`, {}, 'blob')
 }
 
 export const deleteSkill = async (slug) => {
-  return apiSuperAdminDelete(`${BASE_URL}/${encodeURIComponent(slug)}`)
+  return apiDelete(`${BASE_URL}/${encodeURIComponent(slug)}`)
 }
 
 export const skillApi = {

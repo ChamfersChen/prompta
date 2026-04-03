@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import config as sys_config
 from src.repositories.prompt_repository import PromptRepository
+
 # from src.repositories.skill_repository import SkillRepository
 from src.storage.postgres.models_business import Prompt
 
@@ -81,8 +82,12 @@ def get_skills_root_dir() -> Path:
     root.mkdir(parents=True, exist_ok=True)
     return root
 
-def get_prompts_root_dir() -> Path:
-    root = Path(sys_config.save_dir) / "prompts"
+
+def get_prompts_root_dir(username: str | None = None) -> Path:
+    if username:
+        root = Path(sys_config.save_dir) / "prompts" / username
+    else:
+        root = Path(sys_config.save_dir) / "prompts"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -285,6 +290,7 @@ def _resolve_relative_path(skill_dir: Path, relative_path: str, *, allow_root: b
 
     return target, rel
 
+
 def _resolve_relative_path_without_dir(relative_path: str, *, allow_root: bool = False) -> tuple[Path, str]:
     rel = (relative_path or "").strip().replace("\\", "/")
     rel = rel.lstrip("/")
@@ -296,6 +302,7 @@ def _resolve_relative_path_without_dir(relative_path: str, *, allow_root: bool =
 
     target = (Path("") / pure).resolve()
     return target, rel
+
 
 def _is_text_path(path: Path) -> bool:
     if path.name == "SKILL.md":
@@ -401,7 +408,7 @@ async def import_skill_zip(
     return item
 
 
-async def get_prompt_or_raise(db: AsyncSession, id:int) -> Prompt:
+async def get_prompt_or_raise(db: AsyncSession, id: int) -> Prompt:
     repo = PromptRepository(db)
     item = await repo.get_by_id(id)
     if not item:
@@ -416,16 +423,17 @@ async def get_skill_tree(db: AsyncSession, slug: str) -> list[dict[str, Any]]:
         raise ValueError(f"技能目录不存在: {item.dir_path}")
     return _build_tree(skill_dir, skill_dir)
 
-async def get_prompt_tree(db: AsyncSession) -> list[dict[str, Any]]:
-    def _build_node(record:Prompt):
+
+async def get_prompt_tree(db: AsyncSession, username: str | None = None) -> list[dict[str, Any]]:
+    def _build_node(record: Prompt):
         """根据单条记录，构建从根到该节点的完整路径树。"""
         is_dir = bool(record.is_dir)
         target_path = record.path
         target_name = record.name
-    
+
         # 拆分路径各段，例如 "src/test/test.py" -> ["src", "test", "test.py"]
         parts = target_path.split("/")
-    
+
         # 从最深层节点开始，由内向外逐层包裹
         node = {
             "name": target_name,
@@ -433,7 +441,7 @@ async def get_prompt_tree(db: AsyncSession) -> list[dict[str, Any]]:
             "is_dir": is_dir,
             **({"children": []} if is_dir else {}),
         }
-    
+
         # 逐层向上构建父目录节点（倒数第二段开始）
         for i in range(len(parts) - 2, -1, -1):
             parent_path = "/".join(parts[: i + 1])
@@ -444,7 +452,7 @@ async def get_prompt_tree(db: AsyncSession) -> list[dict[str, Any]]:
                 "is_dir": True,
                 "children": [node],
             }
-    
+
         return node
 
     def _merge_node(target: list, node: dict):
@@ -457,24 +465,28 @@ async def get_prompt_tree(db: AsyncSession) -> list[dict[str, Any]]:
                 return
         # 没有找到同路径节点，直接追加
         target.append(node)
-    
-    
+
     def _merge_forest(nodes: list) -> list:
         """将多棵独立的树合并为一棵去重后的森林。"""
         forest = []
         for node in nodes:
             _merge_node(forest, node)
         return forest
-    
-    # 获取所有的prompt记录
-    raw_records:list[Prompt] = await PromptRepository(db).list_all()
+
+    # 获取所有的prompt记录（可按用户过滤）
+    repo = PromptRepository(db)
+    if username:
+        raw_records: list[Prompt] = await repo.list_by_user(username)
+    else:
+        raw_records = await repo.list_all()
     result = [_build_node(r) for r in raw_records]
     result = _merge_forest(result)
-    return result 
+    return result
 
-async def read_prompt_file(db: AsyncSession, path: str) -> dict[str, Any]:
+
+async def read_prompt_file(db: AsyncSession, name:str, path: str) -> dict[str, Any]:
     repo = PromptRepository(db)
-    item = await repo.get_by_path(path)
+    item = await repo.get_by_name_path(name, path)
     if not item:
         raise ValueError(f"文件不存在: {path}")
     try:
@@ -483,6 +495,7 @@ async def read_prompt_file(db: AsyncSession, path: str) -> dict[str, Any]:
         raise ValueError(f"文件编码不支持（仅支持 UTF-8）: {e}") from e
     return {"path": path, "content": content}
 
+
 async def create_prompt_node(
     db: AsyncSession,
     *,
@@ -490,15 +503,21 @@ async def create_prompt_node(
     is_dir: bool,
     content: str | None,
     updated_by: str | None,
+    username: str | None = None,
 ) -> Prompt:
     repo = PromptRepository(db)
+    # user_prefix = f"{username}/" if username else ""
+    # final_path = f"{user_prefix}{path}" if username else path
+
     if not is_dir:
         list_path = path.split("/")
         item = await repo.create(
             name=list_path[-1],
             path=path,
             description=content or "",
-            dir_path="/".join(list_path[:-1]) if len(list_path) > 1 else "",
+            dir_path="/".join(path.split("/")[:-1])
+            if len(path.split("/")) > 1
+            else path.rstrip("/"),
             is_dir=is_dir,
             created_by=updated_by,
         )
@@ -512,6 +531,7 @@ async def create_prompt_node(
             created_by=updated_by,
         )
     return item
+
 
 async def create_skill_node(
     db: AsyncSession,
@@ -563,6 +583,7 @@ async def update_skill_file(
 
     target.write_text(content, encoding="utf-8")
 
+
 async def update_prompt_file(
     db: AsyncSession,
     *,
@@ -573,13 +594,15 @@ async def update_prompt_file(
     repo = PromptRepository(db)
     item = await repo.update(path, content, updated_by)
 
+
 async def delete_prompt_file(
     db: AsyncSession,
     *,
+    name:str,
     path: str,
 ) -> None:
     repo = PromptRepository(db)
-    item = await repo.delete_by_path(path)
+    item = await repo.delete_by_name_path(name, path)
 
 
 async def _update_skill_metadata_if_skills_md(
@@ -610,7 +633,7 @@ async def _update_prompt_metadata(
 ) -> None:
     """更新元数据"""
     repo = PromptRepository(db)
-    await repo.update_metadata(item, name=name, description=content, filename=filename,updated_by=updated_by)
+    await repo.update_metadata(item, name=name, description=content, filename=filename, updated_by=updated_by)
 
 
 async def delete_skill_node(db: AsyncSession, *, slug: str, relative_path: str) -> None:

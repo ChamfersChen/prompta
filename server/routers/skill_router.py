@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from server.utils.auth_middleware import get_admin_user, get_db, get_superadmin_user
+from server.utils.auth_middleware import get_admin_user, get_db, get_superadmin_user, get_required_user
 from src.services.skill_service import (
     create_skill_node,
     delete_skill,
@@ -61,7 +61,7 @@ def _cleanup_export_file(path: str) -> None:
 
 @skills.get("")
 async def list_skills_route(
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取技能列表（管理员可读）。"""
@@ -75,7 +75,7 @@ async def list_skills_route(
 
 @skills.get("/dependency-options")
 async def get_skill_dependency_options_route(
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """【暂时无用】获取 skill 依赖项可选列表（仅超级管理员）。"""
@@ -114,7 +114,7 @@ async def import_skill_route(
 @skills.get("/{slug}/tree")
 async def get_skill_tree_route(
     slug: str,
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """获取技能目录树（仅超级管理员）。"""
@@ -134,7 +134,7 @@ async def get_skill_tree_route(
 async def get_skill_file_route(
     slug: str,
     path: str = Query(..., description="相对 skill 根目录路径"),
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """读取技能文本文件（仅超级管理员）。"""
@@ -234,7 +234,7 @@ async def update_skill_dependencies_route(
 async def delete_skill_file_route(
     slug: str,
     path: str = Query(..., description="相对 skill 根目录路径"),
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """删除技能文件或目录（仅超级管理员）。"""
@@ -254,7 +254,7 @@ async def delete_skill_file_route(
 async def export_skill_route(
     slug: str,
     background_tasks: BackgroundTasks,
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """导出技能压缩包（仅超级管理员）。"""
@@ -278,7 +278,7 @@ async def export_skill_route(
 @skills.delete("/{slug}")
 async def delete_skill_route(
     slug: str,
-    _current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
     """删除技能（目录 + 数据库记录，仅超级管理员）。"""

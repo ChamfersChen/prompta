@@ -180,6 +180,11 @@
                     </a-button>
                   </a-form-item>
 
+                  <!-- 注册链接 -->
+                  <div class="register-link">
+                    还没有账号？<a @click="goToRegister">立即注册</a>
+                  </div>
+
                   <!-- 第三方登录选项 -->
                   <div class="third-party-login">
                     <div class="divider">
@@ -318,6 +323,10 @@ const showDevMessage = () => {
 
 const goHome = () => {
   router.push('/')
+}
+
+const goToRegister = () => {
+  router.push('/register')
 }
 
 // 清理倒计时器
@@ -711,6 +720,22 @@ onUnmounted(() => {
     font-size: 16px;
     border-radius: 8px;
   }
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 16px;
+  color: #8c8c8c;
+}
+
+.register-link a {
+  color: #1890ff;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.register-link a:hover {
+  color: #40a9ff;
 }
 
 .third-party-login {

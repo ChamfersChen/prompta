@@ -82,6 +82,16 @@
                 </a-button>
                 <a-button
                   size="small"
+                  type="dashed"
+                  @click="openPublishModal"
+                  :disabled="!selectedPath || selectedIsDir"
+                  class="lucide-icon-btn"
+                >
+                  <Store :size="14" />
+                  <span>{{ isPublished ? '重新发布' : '发布到市场' }}</span>
+                </a-button>
+                <a-button
+                  size="small"
                   danger
                   ghost
                   @click="confirmDeleteNode"
@@ -195,6 +205,61 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- 发布到市场弹窗 -->
+    <a-modal
+      v-model:open="publishModalVisible"
+      title="发布到提示词市场"
+      @ok="handlePublishToMarket"
+      :confirm-loading="publishing"
+      width="500px"
+    >
+      <a-form layout="vertical" class="pt-12">
+        <a-form-item label="模板名称" required>
+          <a-input v-model:value="publishForm.name" placeholder="输入模板名称" />
+        </a-form-item>
+        <a-form-item label="分类" required>
+          <a-select v-model:value="publishForm.category" placeholder="选择分类">
+            <a-select-option v-for="cat in templateCategories" :key="cat.key" :value="cat.key">
+              {{ cat.name }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="描述">
+          <a-textarea
+            v-model:value="publishForm.description"
+            placeholder="简要描述这个模板的用途"
+            :rows="3"
+          />
+        </a-form-item>
+        <a-form-item label="标签">
+          <a-select
+            v-model:value="publishForm.tags"
+            mode="tags"
+            placeholder="添加标签"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="变量">
+          <div class="variable-tags-preview">
+            <a-tag v-for="v in variableList" :key="v.name" color="blue">
+              {{ v.name }}
+            </a-tag>
+            <span v-if="variableList.length === 0" style="color: #999; font-size: 12px;">
+              当前文件未检测到变量
+            </span>
+          </div>
+        </a-form-item>
+        <a-form-item label="公开状态">
+          <a-switch v-model:checked="publishForm.isPublic" />
+          <span class="switch-hint">公开后可分享到社区市场</span>
+        </a-form-item>
+        <a-form-item label="设为官方模板" v-if="userStore.isSuperAdmin && publishForm.isPublic">
+          <a-switch v-model:checked="publishForm.isOfficial" />
+          <span class="switch-hint">设为官方模板后，所有用户可见并可收藏</span>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -227,15 +292,19 @@ import {
   Plus,
   X,
   Variable,
-  Trash
+  Trash,
+  Store
 } from 'lucide-vue-next'
 import { promptApi } from '@/apis/prompt_api'
+import { publishTemplate, updateTemplate, getMyTemplates } from '@/apis/template_api'
+import { useUserStore } from '@/stores/user'
 import FileTreeComponent from '@/components/FileTreeComponent.vue'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
 
 const themeStore = useThemeStore()
+const userStore = useUserStore()
 const theme = computed(() => (themeStore.isDark ? 'dark' : 'light'))
 
 const previewContent = computed(() => {
@@ -284,6 +353,28 @@ const newVariableName = ref('')
 const editingVariable = ref(null)
 const variableInputValues = ref({})
 
+const publishModalVisible = ref(false)
+const publishing = ref(false)
+const publishForm = reactive({
+  name: '',
+  category: 'writing',
+  description: '',
+  tags: [],
+  isPublic: false,
+  isOfficial: false
+})
+const publishedTemplateId = ref('')
+
+const templateCategories = [
+  { key: 'writing', name: '写作' },
+  { key: 'programming', name: '编程' },
+  { key: 'analysis', name: '分析' },
+  { key: 'translation', name: '翻译' },
+  { key: 'office', name: '办公' },
+  { key: 'education', name: '教育' },
+  { key: 'marketing', name: '营销' }
+]
+
 const filteredPrompts = computed(() => {
   if (!searchQuery.value) return prompts.value
   const q = searchQuery.value.toLowerCase()
@@ -305,6 +396,13 @@ const canCopy = computed(() => {
 const isMarkdownFile = computed(() => {
   if (!selectedPath.value) return false
   return selectedPath.value.toLowerCase().endsWith('.md')
+})
+
+const myPublishedTemplates = ref([])
+
+const isPublished = computed(() => {
+  if (!selectedPath.value || selectedIsDir.value) return false
+  return myPublishedTemplates.value.find(t => t.source_path === selectedPath.value)
 })
 
 // 切换到非markdown文件时重置为编辑模式
@@ -581,6 +679,81 @@ const confirmDeleteNode = () => {
   })
 }
 
+const openPublishModal = async () => {
+  if (!selectedPath.value || selectedIsDir.value) return
+  const fileName = selectedPath.value.split('/').pop().replace(/\.[^.]+$/, '')
+  publishForm.name = fileName
+  publishForm.category = 'writing'
+  publishForm.description = ''
+  publishForm.tags = []
+  publishForm.isPublic = false
+  publishForm.isOfficial = false
+  publishedTemplateId.value = ''
+
+  const existing = isPublished.value
+  if (existing) {
+    try {
+      const data = await getMyTemplates()
+      const template = (data.list || []).find(t => t.source_path === selectedPath.value)
+      if (template) {
+        publishForm.name = template.name
+        publishForm.category = template.category
+        publishForm.description = template.description || ''
+        publishForm.tags = template.tags || []
+        publishForm.isPublic = template.is_public || false
+        publishForm.isOfficial = template.is_official || false
+        publishedTemplateId.value = template.id
+      }
+    } catch (error) {
+      console.error('获取模板信息失败:', error)
+    }
+  }
+
+  publishModalVisible.value = true
+}
+
+const handlePublishToMarket = async () => {
+  if (!publishForm.name || !fileContent.value) {
+    message.error('请填写模板名称')
+    return
+  }
+  publishing.value = true
+  try {
+    const variables = variableList.value.map(v => ({
+      name: v.name,
+      type: 'string',
+      default: variableInputValues.value[v.name] || '',
+      description: ''
+    }))
+
+    const payload = {
+      name: publishForm.name,
+      category: publishForm.category,
+      description: publishForm.description,
+      tags: publishForm.tags,
+      content: fileContent.value,
+      variables: variables,
+      is_public: publishForm.isPublic,
+      is_official: publishForm.isOfficial,
+      source_path: selectedPath.value
+    }
+
+    if (publishedTemplateId.value) {
+      await updateTemplate(publishedTemplateId.value, payload)
+      message.success('重新发布成功！模板已更新')
+    } else {
+      await publishTemplate(payload)
+      message.success('发布成功！可在提示词市场中查看')
+    }
+    publishModalVisible.value = false
+    await loadMyTemplates()
+  } catch (error) {
+    message.error('发布失败')
+  } finally {
+    publishing.value = false
+  }
+}
+
 const handleImportUpload = async ({ file, onSuccess, onError }) => {
   importing.value = true
   try {
@@ -601,7 +774,19 @@ const handleImportUpload = async ({ file, onSuccess, onError }) => {
   }
 }
 
-onMounted(reloadTree)
+const loadMyTemplates = async () => {
+  try {
+    const data = await getMyTemplates()
+    myPublishedTemplates.value = data.list || []
+  } catch (error) {
+    console.error('获取我的模板失败:', error)
+  }
+}
+
+onMounted(async () => {
+  await reloadTree()
+  await loadMyTemplates()
+})
 
 // 暴露方法给父组件
 defineExpose({
@@ -963,6 +1148,18 @@ defineExpose({
 }
 .pt-12 {
   padding-top: 12px;
+}
+
+.variable-tags-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.switch-hint {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #999;
 }
 
 @media (max-width: 1000px) {

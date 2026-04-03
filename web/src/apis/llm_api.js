@@ -3,9 +3,6 @@ import {
   apiPost,
   apiDelete,
   apiPut,
-  apiAdminGet,
-  apiAdminPost,
-  apiAdminDelete,
   apiRequest
 } from './base'
 import { useUserStore } from '@/stores/user'
