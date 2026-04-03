@@ -1,51 +1,46 @@
+version: '3.8'
+
+x-api-common-env: &api-common-env
+  PYTHONPATH: /app
+  RUNNING_IN_DOCKER: "true"
+  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prompta}
+  REDIS_URL: redis://redis:6379/0
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+  MINIO_SECURE: "false"
+  NO_PROXY: localhost,127.0.0.1,minio,redis,postgres
+  no_proxy: localhost,127.0.0.1,minio,redis,postgres
+
 services:
   api:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    image: momai-api:0.5.dev
-    container_name: momaiapi-dev
+    image: pria-api:latest
+    container_name: pria-api
     working_dir: /app
     volumes:
-      - ./server:/app/server
       - ./src:/app/src
+      - ./server:/app/server
       - ./saves:/app/saves
-      - ./test:/app/test
-      - ./scripts:/app/scripts
       - ./.env:/app/.env
-      - ${MODEL_DIR:-./models}:/models  # 使用默认值处理未定义的环境变量
     ports:
-      - "15050:15050"
+      - "5050:5050"
     networks:
-      - app-network
+      - pria-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
       - .env
-    # region api_envs
     environment:
-      - HOST_IP=${HOST_IP:-}
-      - POSTGRES_URL=${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prompta_db}}
-      - MINIO_URI=${MINIO_URI:-http://milvus-minio:9000}
-      - MODEL_DIR_IN_DOCKER=/models
-      - RUNNING_IN_DOCKER=true
-      - NO_PROXY=localhost,127.0.0.1,milvus,graph,milvus-minio,milvus-etcd-dev,etcd,minio,mineru,paddlex,api.siliconflow.cn
-      - no_proxy=localhost,127.0.0.1,milvus,graph,milvus-minio,milvus-etcd-dev,etcd,minio,mineru,paddlex,api.siliconflow.cn
-    # endregion api_envs
-    command: uv run --no-dev uvicorn server.main:app --host 0.0.0.0 --port 15050 --reload
+      <<: *api-common-env
+    command: python -m uvicorn server.main:app --host 0.0.0.0 --port 5050
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:15050/api/system/health || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 8
-      start_period: 180s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      milvus:
         condition: service_healthy
       minio:
         condition: service_healthy
@@ -55,121 +50,103 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       target: development
-    image: prompta-web:0.0.1.dev
-    container_name: web-dev
+    image: pria-web:latest
+    container_name: pria-web
     volumes:
       - ./web/src:/app/src
       - ./web/public:/app/public
-      - ./web/index.html:/app/index.html
       - ./web/vite.config.js:/app/vite.config.js
     ports:
-      - "15173:15173"
+      - "5173:5173"
     depends_on:
       - api
     networks:
-      - app-network
+      - pria-network
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://api:15050
-      - VITE_USE_RUNS_API=${VITE_USE_RUNS_API:-false}
-    command: pnpm run server
+      - VITE_API_URL=http://localhost:5050
+    command: pnpm run dev
     restart: unless-stopped
 
-  etcd:
-    container_name: milvus-etcd-dev
-    image: quay.io/coreos/etcd:v3.5.5
-    environment:
-      - ETCD_AUTO_COMPACTION_MODE=revision
-      - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
-      - ETCD_SNAPSHOT_COUNT=50000
-    volumes:
-      - ./docker/volumes/milvus/etcd:/etcd
-    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
-    healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
-      interval: 60s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  minio:
-    container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-    volumes:
-      - ./docker/volumes/milvus/minio:/minio_data
-      - ./docker/volumes/milvus/minio_config:/root/.minio
-    command: minio server /minio_data --address 0.0.0.0:9000 --console-address 0.0.0.0:9001
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 60s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
+  # Production web server (optional)
+  web-prod:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: production
+    image: pria-web-prod:latest
+    container_name: pria-web-prod
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "80:80"
     networks:
-      - app-network
-    restart: unless-stopped
-
-  milvus:
-    image: milvusdb/milvus:v2.5.6
-    container_name: milvus
-    command: ["milvus", "run", "standalone"]
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-      MILVUS_LOG_LEVEL: error
-    volumes:
-      - ./docker/volumes/milvus/milvus:/var/lib/milvus
-      - ./docker/volumes/milvus/logs:/var/lib/milvus/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 60s
-      start_period: 120s
-      timeout: 30s
-      retries: 5
-    ports:
-      - "19530:19530"
-      - "9091:9091"
+      - pria-network
     depends_on:
-      - "etcd"
-      - "minio"
-    networks:
-      - app-network
+      - api
     restart: unless-stopped
 
   postgres:
-    # image: postgres:16
-    image: pgvector/pgvector:pg16
-    container_name: postgres
+    image: postgres:16
+    container_name: pria-postgres
     ports:
       - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-prompta_db}
+      - POSTGRES_DB=${POSTGRES_DB:-prompta}
       - TZ=${TZ:-Asia/Shanghai}
     volumes:
-      - ./docker/volumes/postgresql:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-prompta_db} || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-prompta} || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
     networks:
-      - app-network
+      - pria-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pria-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - pria-network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: pria-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/minio_data
+    command: server /minio_data --address ":9000" --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - pria-network
     restart: unless-stopped
 
 networks:
-  app-network:
+  pria-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
