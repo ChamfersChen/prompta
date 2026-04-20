@@ -280,7 +280,7 @@ const brandName = computed(() => {
 const brandSubtitle = computed(() => {
   const rawSubtitle = infoStore.branding?.subtitle ?? ''
   const trimmed = rawSubtitle.trim()
-  return trimmed || '大模型驱动的知识库管理工具'
+  return trimmed || '知识与提示词管理工具'
 })
 const brandDescription = computed(() => {
   const rawDescription = infoStore.branding?.description ?? ''
@@ -408,36 +408,17 @@ const handleLogin = async () => {
 
     // 根据用户角色决定重定向目标
     if (redirectPath === '/') {
-      // 如果是管理员，直接跳转到/chat页面
+      // 如果是管理员，跳转到扩展管理
       if (userStore.isAdmin) {
-        router.push('/llm')
+        router.push('/extensions/prompts')
         return
       }
 
-      // 普通用户跳转到默认智能体
+      // 普通用户跳转到提示词市场
       try {
-        router.push('/llm')
-        // // 初始化agentStore并获取智能体信息
-        // await agentStore.initialize()
-
-        // // 尝试获取默认智能体
-        // if (agentStore.defaultAgentId) {
-        //   // 如果存在默认智能体，直接跳转
-        //   router.push(`/agent/${agentStore.defaultAgentId}`)
-        //   return
-        // }
-
-        // // 没有默认智能体，获取第一个可用智能体
-        // const agentIds = Object.keys(agentStore.agents)
-        // if (agentIds.length > 0) {
-        //   router.push(`/agent/${agentIds[0]}`)
-        //   return
-        // }
-
-        // // 没有可用智能体，回退到首页
-        // router.push('/')
+        router.push('/market')
       } catch (error) {
-        console.error('获取智能体信息失败:', error)
+        console.error('跳转到提示词市场失败:', error)
         router.push('/')
       }
     } else {

@@ -1,9 +1,6 @@
 <template>
   <div class="template-market-view">
     <div class="market-header">
-      <div class="header-left">
-        <h2 class="page-title">提示词市场</h2>
-      </div>
       <div class="header-right">
         <a-input-search
           v-model:value="searchKeyword"
@@ -13,10 +10,6 @@
           @change="handleSearchChange"
           allowClear
         />
-        <a-button type="primary" @click="showCreateModal = true" class="lucide-icon-btn">
-          <Plus :size="14" />
-          <span>创建模板</span>
-        </a-button>
       </div>
     </div>
 
@@ -31,19 +24,19 @@
           >
             <a-menu-item key="official">
               <Store :size="16" />
-              <span>官方模板</span>
+              <span> 官方模板</span>
             </a-menu-item>
             <a-menu-item key="community">
               <Users :size="16" />
-              <span>社区模板</span>
+              <span> 社区模板</span>
             </a-menu-item>
-            <a-menu-item key="mine">
+            <a-menu-item key="mine" v-if="userStore.isAdmin">
               <Folder :size="16" />
-              <span>我的模板</span>
+              <span> 我的模板</span>
             </a-menu-item>
             <a-menu-item key="favorites">
               <Heart :size="16" />
-              <span>我的收藏</span>
+              <span> 我的收藏</span>
             </a-menu-item>
           </a-menu>
         </div>
@@ -96,7 +89,7 @@
         <div class="empty-state" v-else-if="!loading">
           <Inbox :size="48" />
           <p>暂无模板</p>
-          <a-button type="primary" @click="showCreateModal = true">创建第一个模板</a-button>
+          <!-- <a-button type="primary" @click="showCreateModal = true">创建第一个模板</a-button> -->
         </div>
 
         <div class="loading-state" v-if="loading">
@@ -160,12 +153,7 @@
 
             <div class="detail-rating" v-if="selectedTab[0] !== 'mine'">
               <h4>评分</h4>
-              <div class="rating-display">
-                <a-rate :value="selectedTemplate?.rating || 0" disabled />
-                <span class="rating-count">({{ selectedTemplate?.ratingCount || 0 }} 人评分)</span>
-              </div>
               <div class="my-rating">
-                <span>我的评分:</span>
                 <a-rate v-model:value="myRating" @change="handleRate(selectedTemplate)" />
               </div>
             </div>
@@ -220,6 +208,45 @@
                 </div>
               </div>
             </div>
+
+            <!-- 我的模板：发布设置 -->
+            <div class="detail-publish-settings" v-if="selectedTab[0] === 'mine'">
+              <h4>发布设置</h4>
+              <div class="publish-setting-item">
+                <div class="setting-label">
+                  <span>公开到社区</span>
+                  <a-tooltip title="公开后其他用户可以在社区模板中查看和使用此模板">
+                    <Info :size="14" class="info-icon" />
+                  </a-tooltip>
+                </div>
+                <a-switch
+                  :checked="editForm.isPublic"
+                  @change="(val) => editForm.isPublic = val"
+                />
+              </div>
+              <div class="publish-setting-item" v-if="userStore.isSuperAdmin && editForm.isPublic">
+                <div class="setting-label">
+                  <span>设为官方模板</span>
+                  <a-tooltip title="官方模板会同时在官方模板和社区模板列表中展示">
+                    <Info :size="14" class="info-icon" />
+                  </a-tooltip>
+                </div>
+                <a-switch
+                  :checked="editForm.isOfficial"
+                  @change="(val) => editForm.isOfficial = val"
+                />
+              </div>
+              <a-button
+                type="primary"
+                size="small"
+                :loading="savingSettings"
+                :disabled="!hasSettingsChanged"
+                @click="handleSaveSettings"
+                style="margin-top: 12px;"
+              >
+                保存设置
+              </a-button>
+            </div>
           </div>
         </div>
       </div>
@@ -248,7 +275,7 @@
     </a-modal>
 
     <!-- 创建模板弹窗 -->
-    <a-modal
+    <!-- <a-modal
       v-model:open="showCreateModal"
       title="创建模板"
       width="600px"
@@ -323,7 +350,7 @@
           <span class="switch-hint">设为官方模板后，所有用户可见并可收藏</span>
         </a-form-item>
       </a-form>
-    </a-modal>
+    </a-modal> -->
   </div>
 </template>
 
@@ -346,17 +373,21 @@ import {
   Globe,
   Briefcase,
   GraduationCap,
-  Megaphone
+  Megaphone,
+  Info
 } from 'lucide-vue-next'
 import TemplateCard from '@/components/TemplateCard.vue'
 import { useTemplateStore } from '@/stores/templateStore'
 import { useUserStore } from '@/stores/user'
 import * as templateApi from '@/apis/template_api'
 import { promptApi } from '@/apis/prompt_api'
+import { useThemeStore } from '@/stores/theme'
 
 const router = useRouter()
 const store = useTemplateStore()
 const userStore = useUserStore()
+const themeStore = useThemeStore()
+const theme = computed(() => (themeStore.isDark ? 'dark' : 'light'))
 
 const selectedTab = ref(['official'])
 const currentCategory = ref('all')
@@ -367,7 +398,7 @@ const pageSize = ref(20)
 const totalCount = ref(0)
 const loading = ref(false)
 const showDetailModal = ref(false)
-const showCreateModal = ref(false)
+// const showCreateModal = ref(false)
 const showFavoriteModal = ref(false)
 const selectedTemplate = ref(null)
 const creating = ref(false)
@@ -391,6 +422,23 @@ const createForm = ref({
   variables: [],
   is_public: false,
   is_official: false
+})
+
+const editForm = ref({
+  isPublic: false,
+  isOfficial: false
+})
+
+const editFormOriginal = ref({
+  isPublic: false,
+  isOfficial: false
+})
+
+const savingSettings = ref(false)
+
+const hasSettingsChanged = computed(() => {
+  return editForm.value.isPublic !== editFormOriginal.value.isPublic ||
+         editForm.value.isOfficial !== editFormOriginal.value.isOfficial
 })
 
 const categories = [
@@ -525,10 +573,15 @@ const handleTemplateClick = async (template) => {
     selectedTemplate.value = detail
     showDetailModal.value = true
 
+    editForm.value.isPublic = detail.is_public || false
+    editForm.value.isOfficial = detail.is_official || false
+    editFormOriginal.value.isPublic = detail.is_public || false
+    editFormOriginal.value.isOfficial = detail.is_official || false
+
     try {
       const commentData = await templateApi.getTemplateComments(template.id)
       comments.value = commentData.list || []
-    } catch (error) {
+    } catch {
       comments.value = []
     }
 
@@ -541,12 +594,38 @@ const handleTemplateClick = async (template) => {
         userRatings.value[template.id] = 0
         myRating.value = 0
       }
-    } catch (error) {
+    } catch {
       userRatings.value[template.id] = 0
       myRating.value = 0
     }
-  } catch (error) {
+  } catch {
     message.error('获取模板详情失败')
+  }
+}
+
+const handleSaveSettings = async () => {
+  if (!selectedTemplate.value) return
+  
+  savingSettings.value = true
+  try {
+    await templateApi.updateTemplate(selectedTemplate.value.id, {
+      is_public: editForm.value.isPublic,
+      is_official: editForm.value.isOfficial
+    })
+    
+    selectedTemplate.value.is_public = editForm.value.isPublic
+    selectedTemplate.value.is_official = editForm.value.isOfficial
+    editFormOriginal.value.isPublic = editForm.value.isPublic
+    editFormOriginal.value.isOfficial = editForm.value.isOfficial
+    
+    const newData = await templateApi.getMyTemplates()
+    store.myTemplates = newData.list || []
+    
+    message.success('设置已保存')
+  } catch {
+    message.error('保存失败')
+  } finally {
+    savingSettings.value = false
   }
 }
 
@@ -555,9 +634,23 @@ const handleFavoriteClick = (template) => {
     handleUnfavorite(template)
     return
   }
-  selectedTemplate.value = template
-  favoriteForm.value.folderPath = ''
-  showFavoriteModal.value = true
+  if (userStore.isAdmin) {
+    selectedTemplate.value = template
+    favoriteForm.value.folderPath = ''
+    showFavoriteModal.value = true
+  } else {
+    handleQuickFavorite(template)
+  }
+}
+
+const handleQuickFavorite = async (template) => {
+  try {
+    await templateApi.addFavorite(template.id)
+    message.success('收藏成功')
+    await store.fetchFavorites()
+  } catch {
+    message.error('收藏失败')
+  }
 }
 
 const confirmFavorite = async () => {
@@ -600,10 +693,9 @@ const handleFork = async (template) => {
 
 const handleUseTemplate = (template) => {
   router.push({
-    path: '/llm',
+    path: '/extensions/prompts',
     query: {
-      template: template.id,
-      content: encodeURIComponent(template.content)
+      template: template.id
     }
   })
 }
@@ -656,7 +748,7 @@ const handleCreateTemplate = async () => {
   try {
     await templateApi.publishTemplate(createForm.value)
     message.success('创建成功')
-    showCreateModal.value = false
+    // showCreateModal.value = false
     createForm.value = {
       name: '',
       category: 'writing',
@@ -761,6 +853,8 @@ const isFavorited = (templateId) => {
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
 }
 
 .category-list {
@@ -814,11 +908,10 @@ const isFavorited = (templateId) => {
 
 .template-grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
   flex: 1;
   overflow-y: auto;
-  align-content: flex-start;
 }
 
 .empty-state,
@@ -1032,6 +1125,38 @@ const isFavorited = (templateId) => {
   color: #333;
 }
 
+.detail-publish-settings {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.detail-publish-settings h4 {
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.publish-setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.setting-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #333;
+}
+
+.info-icon {
+  color: #999;
+  cursor: help;
+}
+
 .variable-definitions {
   display: flex;
   flex-direction: column;
@@ -1054,5 +1179,122 @@ const isFavorited = (templateId) => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Dark mode styles */
+:global(.dark) .template-market-view {
+  background: var(--bg-color, #141414);
+}
+
+:global(.dark) .sidebar {
+  background: #1f1f1f;
+}
+
+:global(.dark) .section-title {
+  color: #666;
+}
+
+:global(.dark) .category-item {
+  color: #999;
+}
+
+:global(.dark) .category-item:hover {
+  background: #2a2a2a;
+}
+
+:global(.dark) .category-item.active {
+  background: #1f3a5f;
+  color: #1890ff;
+}
+
+:global(.dark) .main-content {
+  background: #1f1f1f;
+}
+
+:global(.dark) .template-count {
+  color: #666;
+}
+
+:global(.dark) .empty-state,
+:global(.dark) .loading-state {
+  color: #666;
+}
+
+:global(.dark) .pagination {
+  border-top-color: #303030;
+}
+
+:global(.dark) .preview-content {
+  background: #2a2a2a;
+}
+
+:global(.dark) .detail-info h4 {
+  color: #999;
+}
+
+:global(.dark) .info-row {
+  color: #999;
+}
+
+:global(.dark) .info-value {
+  color: #e5e5e5;
+}
+
+:global(.dark) .rating-stats {
+  color: #999;
+}
+
+:global(.dark) .rating-value {
+  color: #faad14;
+}
+
+:global(.dark) .detail-actions {
+  border-top-color: #303030;
+}
+
+:global(.dark) .comment-item {
+  border-bottom-color: #303030;
+}
+
+:global(.dark) .comment-author {
+  color: #e5e5e5;
+}
+
+:global(.dark) .comment-time {
+  color: #666;
+}
+
+:global(.dark) .comment-content {
+  color: #ccc;
+}
+
+:global(.dark) .comment-form textarea {
+  background: #2a2a2a;
+  border-color: #434343;
+  color: #e5e5e5;
+}
+
+:global(.dark) .create-modal :deep(.ant-modal-content) {
+  background: #1f1f1f;
+}
+
+:global(.dark) .create-modal :deep(.ant-modal-header) {
+  background: #1f1f1f;
+}
+
+:global(.dark) .create-modal :deep(.ant-modal-title) {
+  color: #e5e5e5;
+}
+
+:global(.dark) .form-label {
+  color: #999;
+}
+
+:global(.dark) .modal-actions {
+  border-top-color: #303030;
+}
+
+:global(.dark) .favorite-folder-info {
+  color: #999;
 }
 </style>

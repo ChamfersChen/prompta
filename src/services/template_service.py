@@ -33,7 +33,7 @@ class TemplateService:
             page=page,
             page_size=page_size,
         )
-        return [item.to_list_dict() for item in items], total
+        return [{**item[0].to_list_dict(), "commentCount": item[1]} for item in items], total
 
     async def get_community_templates(
         self,
@@ -44,7 +44,7 @@ class TemplateService:
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[dict], int]:
-        """获取社区公开模板（is_official=False 且 is_public=True）"""
+        """获取社区公开模板（is_public=True，包含官方模板）"""
         items, total = await self.repo.list_public(
             category=category,
             keyword=keyword,
@@ -53,13 +53,13 @@ class TemplateService:
             page=page,
             page_size=page_size,
         )
-        return [item.to_list_dict() for item in items], total
+        return [{**item[0].to_list_dict(), "commentCount": item[1]} for item in items], total
 
     # ========== 我的模板 ==========
 
     async def get_my_templates(self, owner_id: int) -> list[dict]:
         items = await self.repo.list_by_owner(owner_id)
-        return [item.to_list_dict() for item in items]
+        return [{**item[0].to_list_dict(), "commentCount": item[1]} for item in items]
 
     # ========== 发布模板 ==========
 
@@ -106,7 +106,7 @@ class TemplateService:
         if item.owner_id != owner_id:
             raise ValueError("无权修改此模板")
 
-        allowed = {"name", "category", "description", "tags", "content", "variables", "is_public"}
+        allowed = {"name", "category", "description", "tags", "content", "variables", "is_public", "is_official"}
         update_data = {k: v for k, v in kwargs.items() if k in allowed}
         item = await self.repo.update(template_id, **update_data)
         return item.to_dict()
@@ -128,7 +128,8 @@ class TemplateService:
         if not item:
             return None
         await self.repo.increment_usage(template_id)
-        return item.to_dict()
+        comment_count = await self.repo.get_comment_count(template_id)
+        return {**item.to_dict(), "commentCount": comment_count}
 
     # ========== Fork 模板 ==========
 
@@ -162,34 +163,55 @@ class TemplateService:
 
         fav = await self.repo.add_favorite(user_id, template_id)
 
-        if folder_path:
-            from src.services.prompt_service import create_prompt_node
+        dest_folder = folder_path if folder_path else "收藏夹"
+        from src.services.prompt_service import create_prompt_node
 
-            file_path = (
-                f"{folder_path}/{template.name}.md"
-                if not template.name.endswith(".md")
-                else f"{folder_path}/{template.name}"
+        file_path = (
+            f"{dest_folder}/{template.name}.md"
+            if not template.name.endswith(".md")
+            else f"{dest_folder}/{template.name}"
+        )
+        try:
+            await create_prompt_node(
+                self.db,
+                path=file_path,
+                is_dir=False,
+                content=template.content,
+                updated_by=username,
             )
-            try:
-                await create_prompt_node(
-                    self.db,
-                    path=file_path,
-                    is_dir=False,
-                    content=template.content,
-                    updated_by=username,
-                )
-                logger.info(f"Template '{template.name}' copied to prompt management: {file_path}")
-            except Exception as e:
-                logger.warning(f"Failed to copy template to prompt management: {e}")
+            logger.info(f"Template '{template.name}' copied to prompt management: {file_path}")
+        except Exception as e:
+            logger.warning(f"Failed to copy template to prompt management: {e}")
 
         return fav.to_dict()
 
-    async def remove_favorite(self, user_id: int, template_id: str) -> bool:
-        return await self.repo.remove_favorite(user_id, template_id)
+    async def remove_favorite(self, user_id: int, template_id: str, folder_path: str = "", username: str = "") -> bool:
+        template = await self.repo.get_by_id(template_id)
+        removed = await self.repo.remove_favorite(user_id, template_id)
+        if not removed:
+            return False
+
+        # 取消收藏时，删除对应的提示词文件
+        if template:
+            dest_folder = folder_path if folder_path else "收藏夹"
+            from src.services.prompt_service import delete_prompt_file
+
+            file_path = (
+                f"{dest_folder}/{template.name}.md"
+                if not template.name.endswith(".md")
+                else f"{dest_folder}/{template.name}"
+            )
+            try:
+                await delete_prompt_file(self.db, name=username, path=file_path)
+                logger.info(f"Removed prompt file on unfavorite: {file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to remove prompt file on unfavorite: {e}")
+
+        return True
 
     async def get_favorites(self, user_id: int) -> list[dict]:
         items = await self.repo.get_favorites_by_user(user_id)
-        return [item.to_list_dict() for item in items]
+        return [{**item[0].to_list_dict(), "commentCount": item[1]} for item in items]
 
     # ========== 评分 ==========
 

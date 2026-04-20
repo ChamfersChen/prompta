@@ -28,15 +28,8 @@
           <span class="logo-text">{{ infoStore.organization.name }}</span>
         </div>
         <nav class="nav-links">
-          <router-link
-            to="/llm"
-            class="nav-link"
-            v-if="userStore.isLoggedIn && userStore.isAdmin"
-          >
-            <span>大模型对话</span>
-          </router-link>
-          <router-link
-            to="/extensions"
+<router-link
+            to="/extensions/prompts"
             class="nav-link"
             v-if="userStore.isLoggedIn && userStore.isAdmin"
           >
@@ -47,7 +40,7 @@
             class="nav-link"
             v-if="userStore.isLoggedIn"
           >
-            <span>提示词市场</span>
+            <span>社区</span>
           </router-link>
         </nav>
         <div class="header-actions">
@@ -71,7 +64,7 @@
           <p class="subtitle">{{ infoStore.branding.subtitle }}</p>
           <!-- <p class="description">{{ infoStore.branding.description }}</p> -->
           <div class="hero-actions">
-            <button class="button-base primary" @click="goToChat">开始对话</button>
+            <button class="button-base primary" @click="goToWorkspace">进入工作台</button>
           </div>
         </div>
         <div class="insight-panel" v-if="featureCards.length">
@@ -192,35 +185,20 @@ const retryLoad = () => {
   loadData()
 }
 
-const goToChat = async () => {
+const goToWorkspace = async () => {
   // 检查用户是否登录
   if (!userStore.isLoggedIn) {
-    // 登录后应该跳转到默认智能体而不是/agent
     sessionStorage.setItem('redirect', '/') // 设置为首页，登录后会通过路由守卫处理重定向
     router.push('/login')
     return
   }
 
-  // 根据用户角色进行跳转
-  // if (userStore.isAdmin) {
-  //   // 管理员用户跳转到聊天页面
-  router.push('/llm')
-  //   return
-  // }
+  if (userStore.isAdmin) {
+    router.push('/extensions/prompts')
+    return
+  }
 
-  // // 普通用户跳转到默认智能体
-  // try {
-  //   // 获取默认智能体
-  //   const defaultAgent = agentStore.defaultAgent
-  //   if (defaultAgent?.id) {
-  //     router.push(`/agent/${defaultAgent.id}`)
-  //   } else {
-  //     router.push('/agent')
-  //   }
-  // } catch (error) {
-  //   console.error('跳转到智能体页面失败:', error)
-  //   router.push('/')
-  // }
+  router.push('/market')
 }
 
 onMounted(() => {

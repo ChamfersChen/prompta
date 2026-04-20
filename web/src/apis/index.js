@@ -7,14 +7,12 @@
 export * from './system_api' // 系统管理API
 // export * from './knowledge_api' // 知识库管理API
 // export * from './graph_api' // 图谱API
-// export * from './agent_api' // 智能体API
 // export * from './tasker' // 任务管理API
 // export * from './mindmap_api' // 思维导图API
 export * from './department_api' // 部门管理API
+export * from './api_key_api' // API Key 管理 API
 // export * from './mcp_api' // MCP API
-// export * from './skill_api' // Skills API
 // export * from './tool_api' // 工具 API
-export * from './llm_api' // 大模型 API
 export * from './prompt_api'
 export * from './template_api'
 
@@ -51,9 +49,6 @@ export {
  *
  * 5. tools.js: 工具API
  *    - 工具信息获取
- *
- * 6. agent.js: 智能体API
- *    - 智能体管理、聊天、配置等功能
  *
  * 注意：API模块已处理权限验证和请求头，使用时无需再手动添加认证头
  */

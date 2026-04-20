@@ -24,15 +24,6 @@
         </div>
         <div
           class="sider-item"
-          :class="{ activesec: activeTab === 'model' }"
-          @click="activeTab = 'model'"
-          v-if="userStore.isSuperAdmin"
-        >
-          <CodeOutlined class="icon" />
-          <span>模型配置</span>
-        </div>
-        <div
-          class="sider-item"
           :class="{ activesec: activeTab === 'user' }"
           @click="activeTab = 'user'"
           v-if="userStore.isAdmin"
@@ -49,6 +40,15 @@
           <TeamOutlined class="icon" />
           <span>部门管理</span>
         </div>
+        <div
+          class="sider-item"
+          :class="{ activesec: activeTab === 'apiKey' }"
+          @click="activeTab = 'apiKey'"
+          v-if="userStore.isAdmin"
+        >
+          <SettingOutlined class="icon" />
+          <span>API Key</span>
+        </div>
       </div>
 
       <!-- 顶部导航 (Mobile) -->
@@ -60,14 +60,6 @@
           v-if="userStore.isSuperAdmin"
         >
           基本设置
-        </div>
-        <div
-          class="nav-item"
-          :class="{ active: activeTab === 'model' }"
-          @click="activeTab = 'model'"
-          v-if="userStore.isSuperAdmin"
-        >
-          模型配置
         </div>
         <div
           class="nav-item"
@@ -85,6 +77,14 @@
         >
           部门管理
         </div>
+        <div
+          class="nav-item"
+          :class="{ active: activeTab === 'apiKey' }"
+          @click="activeTab = 'apiKey'"
+          v-if="userStore.isAdmin"
+        >
+          API Key
+        </div>
       </div>
 
       <!-- 内容区域 -->
@@ -94,16 +94,16 @@
             <BasicSettingsSection />
           </div>
 
-          <div v-show="activeTab === 'model'" v-if="userStore.isSuperAdmin">
-            <ModelProvidersComponent />
-          </div>
-
           <div v-show="activeTab === 'user'" v-if="userStore.isAdmin">
             <UserManagementComponent />
           </div>
 
           <div v-show="activeTab === 'department'" v-if="userStore.isSuperAdmin">
             <DepartmentManagementComponent />
+          </div>
+
+          <div v-show="activeTab === 'apiKey'" v-if="userStore.isAdmin">
+            <APIKeySettingsSection />
           </div>
         </div>
       </div>
@@ -114,11 +114,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { SettingOutlined, CodeOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons-vue'
+import { SettingOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons-vue'
 import BasicSettingsSection from '@/components/BasicSettingsSection.vue'
-import ModelProvidersComponent from '@/components/ModelProvidersComponent.vue'
 import UserManagementComponent from '@/components/UserManagementComponent.vue'
 import DepartmentManagementComponent from '@/components/DepartmentManagementComponent.vue'
+import APIKeySettingsSection from '@/components/APIKeySettingsSection.vue'
 
 const props = defineProps({
   visible: {

@@ -26,6 +26,6 @@ RUN pip install uv --no-cache-dir && \
 COPY src ./src
 COPY server ./server
 
-EXPOSE 5050
+EXPOSE 15050
 
-CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "5050"]
+CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "15050"]

@@ -24,33 +24,6 @@
           </div>
         </div>
       </div>
-      <div class="setting-row two-cols">
-        <div class="col-item">
-          <div class="setting-label">{{ items?.embed_model.des }}</div>
-          <!-- <div class="setting-content">
-            <EmbeddingModelSelector
-              :value="configStore.config?.embed_model"
-              @change="handleChange('embed_model', $event)"
-              style="width: 100%"
-            />
-          </div> -->
-        </div>
-        <div class="col-item">
-          <div class="setting-label">{{ items?.reranker.des }}</div>
-          <div class="setting-content">
-            <a-select
-              class="full-width"
-              :value="configStore.config?.reranker"
-              @change="handleChange('reranker', $event)"
-              placeholder="请选择重排序模型"
-            >
-              <a-select-option v-for="(name, idx) in rerankerChoices" :key="idx" :value="name"
-                >{{ name }}
-              </a-select-option>
-            </a-select>
-          </div>
-        </div>
-      </div>
     </div>
 
     <h3 class="section-title">内容审查配置</h3>
@@ -83,76 +56,11 @@
         />
       </div>
     </div>
-
-    <!-- 服务链接部分 -->
-    <h3 v-if="userStore.isAdmin" class="section-title">服务链接</h3>
-    <div v-if="userStore.isAdmin">
-      <p class="service-description">
-        快速访问系统相关的外部服务，需要将 localhost 替换为实际的 IP 地址。
-      </p>
-      <div class="services-grid">
-        <div class="service-link-card">
-          <div class="service-info">
-            <h4>Neo4j 浏览器</h4>
-            <p>图数据库管理界面</p>
-          </div>
-          <a-button
-            type="default"
-            @click="openLink('http://localhost:7474/')"
-            :icon="h(GlobalOutlined)"
-          >
-            访问
-          </a-button>
-        </div>
-
-        <div class="service-link-card">
-          <div class="service-info">
-            <h4>API 接口文档</h4>
-            <p>系统接口文档和调试工具</p>
-          </div>
-          <a-button
-            type="default"
-            @click="openLink('http://localhost:5050/docs')"
-            :icon="h(GlobalOutlined)"
-          >
-            访问
-          </a-button>
-        </div>
-
-        <div class="service-link-card">
-          <div class="service-info">
-            <h4>MinIO 对象存储</h4>
-            <p>文件存储管理控制台</p>
-          </div>
-          <a-button
-            type="default"
-            @click="openLink('http://localhost:9001')"
-            :icon="h(GlobalOutlined)"
-          >
-            访问
-          </a-button>
-        </div>
-
-        <div class="service-link-card">
-          <div class="service-info">
-            <h4>Milvus WebUI</h4>
-            <p>向量数据库管理界面</p>
-          </div>
-          <a-button
-            type="default"
-            @click="openLink('http://localhost:9091/webui/')"
-            :icon="h(GlobalOutlined)"
-          >
-            访问
-          </a-button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, h } from 'vue'
+import { computed, h, onMounted } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useUserStore } from '@/stores/user'
 import { GlobalOutlined } from '@ant-design/icons-vue'
@@ -208,6 +116,15 @@ const handleContentGuardModelSelect = (spec) => {
 const openLink = (url) => {
   window.open(url, '_blank')
 }
+
+onMounted(async () => {
+  const hasModelNames = Object.keys(configStore.config?.model_names || {}).length > 0
+  const hasProviderStatus = Object.keys(configStore.config?.model_provider_status || {}).length > 0
+
+  if (!hasModelNames || !hasProviderStatus) {
+    await configStore.refreshConfig()
+  }
+})
 </script>
 
 <style lang="less" scoped>

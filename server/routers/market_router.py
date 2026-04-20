@@ -45,6 +45,7 @@ class UpdateTemplateRequest(BaseModel):
     content: str | None = None
     variables: list[dict] | None = None
     is_public: bool | None = None
+    is_official: bool | None = None
 
 
 class RateTemplateRequest(BaseModel):
@@ -300,11 +301,13 @@ async def remove_favorite(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """取消收藏"""
+    """取消收藏（同时删除对应的提示词文件）"""
     try:
         service = TemplateService(db)
-        await service.remove_favorite(current_user.id, template_id)
+        await service.remove_favorite(current_user.id, template_id, username=current_user.username)
         return {"success": True}
+    except ValueError as e:
+        _raise_from_value_error(e)
     except Exception as e:
         logger.error(f"取消收藏失败: {e}")
         raise HTTPException(status_code=500, detail="取消收藏失败")
@@ -396,6 +399,27 @@ async def update_template(
     except Exception as e:
         logger.error(f"更新模板失败: {e}")
         raise HTTPException(status_code=500, detail="更新模板失败")
+
+
+# ========== 取消发布模板 ==========
+
+
+@market.post("/{template_id}/unpublish")
+async def unpublish_template(
+    template_id: str,
+    current_user: User = Depends(get_required_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """取消发布模板（将 is_public 设为 False，仅创建者）"""
+    try:
+        service = TemplateService(db)
+        result = await service.update_template(template_id, current_user.id, is_public=False, is_official=False)
+        return result
+    except ValueError as e:
+        _raise_from_value_error(e)
+    except Exception as e:
+        logger.error(f"取消发布模板失败: {e}")
+        raise HTTPException(status_code=500, detail="取消发布模板失败")
 
 
 # ========== 删除模板 ==========

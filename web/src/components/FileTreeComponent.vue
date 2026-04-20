@@ -133,30 +133,28 @@ const handleNodeClick = (data) => {
 .file-tree-wrapper {
   width: 100%;
 
-  /* 统一节点容器 */
+  /* 基础节点容器 */
   :deep(.ant-tree-treenode) {
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 0 4px;
+    padding: 0 2px;
     height: 32px;
 
-    /* 隐藏切换器 */
     .ant-tree-switcher {
       display: none;
     }
 
-    /* 缩进单元 */
     .ant-tree-indent {
       display: flex;
       align-items: center;
       align-self: stretch;
+
       &-unit {
         width: 14px;
       }
     }
 
-    /* 内容区域容器 */
     .ant-tree-node-content-wrapper {
       display: flex;
       align-items: center;
@@ -164,18 +162,17 @@ const handleNodeClick = (data) => {
       min-width: 0;
       height: 32px;
       line-height: 32px;
-      padding: 0 4px;
-      border-radius: 4px;
+      padding: 0 6px;
+      border-radius: 8px;
       transition: background-color 0.2s;
 
-      /* 图标容器 */
       .ant-tree-iconEle {
         display: flex;
         align-items: center;
         justify-content: center;
         width: 24px;
         height: 100%;
-        margin-right: 4px;
+        margin-right: 6px;
         flex-shrink: 0;
 
         .anticon {
@@ -184,7 +181,6 @@ const handleNodeClick = (data) => {
         }
       }
 
-      /* 标题文字容器 */
       .ant-tree-title {
         display: flex;
         align-items: center;
@@ -194,13 +190,67 @@ const handleNodeClick = (data) => {
       }
 
       &:hover {
-        background-color: var(--gray-50);
+        background-color: var(--gray-100);
       }
 
       &.ant-tree-node-selected {
-        background-color: var(--gray-100);
+        background-color: var(--gray-150);
       }
     }
+  }
+}
+
+.file-tree-wrapper.prompt-tree {
+  :deep(.ant-tree) {
+    background: transparent;
+  }
+
+  :deep(.ant-tree-list-holder-inner) {
+    gap: 2px;
+  }
+
+  :deep(.ant-tree-treenode) {
+    height: 34px;
+    padding: 1px 4px;
+
+    .ant-tree-indent {
+      &-unit {
+        width: 16px;
+        position: relative;
+      }
+
+      &-unit::after {
+        content: '';
+        position: absolute;
+        left: 7px;
+        top: 6px;
+        bottom: 6px;
+        width: 1px;
+        background: var(--gray-200);
+        opacity: 0.7;
+      }
+    }
+
+    .ant-tree-node-content-wrapper {
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      padding: 0 8px;
+
+      &:hover {
+        background: #f1f5f9;
+        border-color: #dbe6f3;
+      }
+
+      &.ant-tree-node-selected {
+        background: linear-gradient(90deg, #e8f3ff 0%, #f0f7ff 100%);
+        border-color: #bfdcff;
+      }
+    }
+  }
+
+  :deep(.ant-tree-treenode:last-child .ant-tree-indent-unit::after) {
+    bottom: 17px;
   }
 }
 
@@ -224,13 +274,19 @@ const handleNodeClick = (data) => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  color: var(--gray-800);
+  color: var(--gray-700);
+  font-weight: 500;
 }
 
 .folder-icon {
-  color: #dcb67a;
-  fill: #dcb67a;
+  color: #d19a44;
+  fill: #d19a44;
   fill-opacity: 0.2;
+}
+
+:deep(.ant-tree-node-content-wrapper.ant-tree-node-selected .node-title-text) {
+  color: #0f3d73;
+  font-weight: 600;
 }
 
 .node-actions {

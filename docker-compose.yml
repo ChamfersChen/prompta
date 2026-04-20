@@ -3,7 +3,7 @@ version: '3.8'
 x-api-common-env: &api-common-env
   PYTHONPATH: /app
   RUNNING_IN_DOCKER: "true"
-  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prompta}
+  POSTGRES_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prompta_db}
   REDIS_URL: redis://redis:6379/0
   MINIO_ENDPOINT: minio:9000
   MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
@@ -26,7 +26,7 @@ services:
       - ./saves:/app/saves
       - ./.env:/app/.env
     ports:
-      - "5050:5050"
+      - "15050:15050"
     networks:
       - pria-network
     extra_hosts:
@@ -57,14 +57,14 @@ services:
       - ./web/public:/app/public
       - ./web/vite.config.js:/app/vite.config.js
     ports:
-      - "5173:5173"
+      - "15173:15173"
     depends_on:
       - api
     networks:
       - pria-network
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:5050
+      - VITE_API_URL=http://localhost:15050
     command: pnpm run dev
     restart: unless-stopped
 
@@ -85,7 +85,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     container_name: pria-postgres
     ports:
       - "5432:5432"

@@ -15,14 +15,14 @@ branding:
   subtitle: ""          # 副标题
 
 features:
-  - label: ""
-    value: "提示词管理"
-    description: ""
-    icon: ""
-  - label: ""
-    value: "多模型测试"
-    description: ""
-    icon: ""
+  # - label: ""
+  #   value: "提示词管理"
+  #   description: ""
+  #   icon: ""
+  # - label: ""
+  #   value: "多模型测试"
+  #   description: ""
+  #   icon: ""
   # - label: ""
   #   value: ""
   #   description: ""

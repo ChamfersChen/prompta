@@ -1,13 +1,14 @@
 import re
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.storage.postgres.manager import pg_manager
-from src.storage.postgres.models_business import User
+from src.storage.postgres.models_business import APIKey, User
 from server.utils.auth_utils import AuthUtils
+from src.services.api_key_service import authenticate_api_key_from_request
 
 # 定义OAuth2密码承载器，指定token URL
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
@@ -98,6 +99,14 @@ async def get_superadmin_user(current_user: User = Depends(get_required_user)):
             detail="需要超级管理员权限",
         )
     return current_user
+
+
+async def get_valid_api_key(request: Request, db: AsyncSession = Depends(get_db)) -> APIKey:
+    return await authenticate_api_key_from_request(db, request)
+
+
+async def get_valid_api_key_header_only(request: Request, db: AsyncSession = Depends(get_db)) -> APIKey:
+    return await authenticate_api_key_from_request(db, request, allow_bearer=False)
 
 
 # 检查路径是否为公开路径

@@ -229,7 +229,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @auth.post("/token-no-verify", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login_for_no_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     global access_token_old
     # 查找用户 - 支持user_id和phone_number登录
     login_identifier = form_data.username  # OAuth2表单中的username字段作为登录标识符

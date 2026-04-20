@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import BlankLayout from '@/layouts/BlankLayout.vue'
 import { useUserStore } from '@/stores/user'
-// import { useAgentStore } from '@/stores/agent'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,45 +26,41 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
-      path: '/login_agents_show',
-      name: 'login_agents_show',
-      component: () => import('../views/LoginAgentsShowView.vue'),
-      meta: { requiresAuth: false }
-    },
-    {
       path: '/register',
       name: 'register',
       component: () => import('../views/RegisterView.vue'),
       meta: { requiresAuth: false }
     },
     {
-      path: '/llm',
-      name: 'LlmMain',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'LlmComp',
-          component: () => import('../views/LlmView.vue'),
-          meta: { keepAlive: true, requiresAuth: true, requiresAdmin: false}
-        }
-      ]
-    },
-    {
       path: '/extensions',
       name: 'extensions',
       component: AppLayout,
+redirect: '/extensions/prompts',
       children: [
         {
-          path: '',
-          name: 'ExtensionsComp',
+          path: 'prompts',
+          name: 'ExtensionsPrompts',
           component: () => import('../views/ExtensionsView.vue'),
+          props: { tab: 'prompts' },
           meta: {
             keepAlive: false,
             requiresAuth: false,
             requiresAdmin: false,
             requiresSuperAdmin: false
           }
+        }
+      ]
+    },
+    {
+      path: '/community',
+      name: 'community',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'Community',
+          component: () => import('../views/CommunityView.vue'),
+          meta: { keepAlive: true, requiresAuth: false }
         }
       ]
     },
@@ -82,12 +77,7 @@ const router = createRouter({
         }
       ]
     },
-    {
-      path: '/skills',
-      name: 'skills',
-      redirect: '/extensions'
-    },
-    {
+{
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       component: () => import('../views/EmptyView.vue'),
@@ -128,59 +118,15 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // // 如果路由需要管理员权限但用户不是管理员
-  // if (requiresAdmin && !isAdmin) {
-  //   // 如果是普通用户，跳转到默认智能体页面
-  //   try {
-  //     const agentStore = useAgentStore()
-  //     // 等待 store 初始化完成
-  //     if (!agentStore.isInitialized) {
-  //       await agentStore.initialize()
-  //     }
-
-  //     const defaultAgent = agentStore.defaultAgent
-  //     if (defaultAgent && defaultAgent.id) {
-  //       next(`/agent/${defaultAgent.id}`)
-  //     } else {
-  //       // 如果没有默认智能体，可以考虑跳转到第一个可用的智能体，或者一个特定的页面
-  //       const agentIds = Object.keys(agentStore.agents)
-  //       if (agentIds.length > 0) {
-  //         next(`/agent/${agentIds[0]}`)
-  //       } else {
-  //         // 没有可用的智能体，跳转到首页
-  //         next('/')
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('获取智能体信息失败:', error)
-  //     next('/')
-  //   }
-  //   return
-  // }
-
-  // // 如果路由需要超级管理员权限但用户不是超级管理员
-  // if (requiresSuperAdmin && !isSuperAdmin) {
-  //   try {
-  //     const agentStore = useAgentStore()
-  //     if (!agentStore.isInitialized) {
-  //       await agentStore.initialize()
-  //     }
-  //     const defaultAgent = agentStore.defaultAgent
-  //     if (defaultAgent && defaultAgent.id) {
-  //       next(`/agent/${defaultAgent.id}`)
-  //     } else {
-  //       next('/')
-  //     }
-  //   } catch (error) {
-  //     console.error('获取智能体信息失败:', error)
-  //     next('/')
-  //   }
-  //   return
-  // }
-
   // 如果用户已登录但访问登录页
   if (to.path === '/login' && isLoggedIn) {
     next('/')
+    return
+  }
+
+  // Regular users default to community
+  if (isLoggedIn && !isAdmin && !['/community', '/market'].includes(to.path)) {
+    next('/community')
     return
   }
 

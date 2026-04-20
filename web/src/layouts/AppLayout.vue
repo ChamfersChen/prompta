@@ -1,10 +1,10 @@
 <script setup>
 import { ref, reactive, onMounted, computed, provide } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   GithubOutlined,
 } from '@ant-design/icons-vue'
-import { Bot, Waypoints, LibraryBig, BarChart3, CircleCheck, Database, Blocks, Store } from 'lucide-vue-next'
+import { BookText, Users } from 'lucide-vue-next'
 
 import { useConfigStore } from '@/stores/config'
 // import { useDatabaseStore } from '@/stores/database'
@@ -24,9 +24,14 @@ const infoStore = useInfoStore()
 const userStore = useUserStore()
 // const { activeCount: activeCountRef, isDrawerOpen } = storeToRefs(taskerStore)
 
+const route = useRoute()
+const router = useRouter()
+
+const isNormalUser = computed(() => userStore.userRole === 'user')
+
 const layoutSettings = reactive({
   showDebug: false,
-  useTopBar: false // 是否使用顶栏
+  useTopBar: false
 })
 
 // Add state for GitHub stars
@@ -55,34 +60,30 @@ const getRemoteConfig = () => {
 
 
 onMounted(async () => {
+  // Regular users default to community
+  if (isNormalUser.value && route.path !== '/community') {
+    router.replace('/community')
+  }
   // 加载信息配置
   await infoStore.loadInfoConfig()
   // 加载其他配置
   // getRemoteConfig()
 })
 
-// 打印当前页面的路由信息，使用 vue3 的 setup composition API
-const route = useRoute()
-console.log(route)
-
 // 下面是导航菜单部分，添加智能体项
 const mainList = computed(() => {
   const items = [
     {
-      name: '大模型',
-      path: '/llm',
-      icon: Bot,
-      activeIcon: Bot
-    },{
-      name: '扩展管理',
-      path: '/extensions',
-      icon: Blocks,
-      activeIcon: Blocks
-    },{
-      name: '提示词市场',
-      path: '/market',
-      icon: Store,
-      activeIcon: Store
+      name: '提示词管理',
+      path: '/extensions/prompts',
+      icon: BookText,
+      activeIcon: BookText
+    },
+    {
+      name: '社区',
+      path: '/community',
+      icon: Users,
+      activeIcon: Users
     }
   ]
 
@@ -96,8 +97,26 @@ provide('settingsModal', {
 </script>
 
 <template>
-  <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar }">
-    <div class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
+  <div class="app-layout" :class="{ 'use-top-bar': layoutSettings.useTopBar, 'normal-user': isNormalUser }">
+    <!-- 普通用户: 顶部导航栏 -->
+    <div v-if="isNormalUser" class="top-header">
+      <div class="top-header-left">
+        <div class="logo circle">
+          <router-link to="/community">
+            <img :src="infoStore.organization.avatar" />
+          </router-link>
+        </div>
+        <span class="top-header-title">社区</span>
+      </div>
+      <div class="top-header-right">
+        <div class="nav-item user-info">
+          <UserInfoComponent />
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理员: 左侧导航栏 -->
+    <div v-else class="header" :class="{ 'top-bar': layoutSettings.useTopBar }">
       <div class="logo circle">
         <router-link to="/">
           <img :src="infoStore.organization.avatar" />
@@ -342,6 +361,44 @@ div.header,
 
 .app-layout.use-top-bar {
   flex-direction: column;
+}
+
+.app-layout.normal-user {
+  flex-direction: column;
+}
+
+.top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 20px;
+  background-color: var(--main-0);
+  border-bottom: 1px solid var(--gray-100);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.top-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-1000);
+}
+
+.top-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-layout.normal-user #app-router-view {
+  height: calc(100vh - 48px);
 }
 
 .header.top-bar {

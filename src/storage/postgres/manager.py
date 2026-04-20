@@ -89,6 +89,94 @@ class PostgresManager(metaclass=SingletonMeta):
             await conn.run_sync(BusinessBase.metadata.create_all)
         logger.info("PostgreSQL business tables created/checked")
 
+    async def ensure_business_schema_compat(self):
+        """补齐历史库缺失字段/索引，避免 create_all 无法 alter 的问题"""
+        self._check_initialized()
+        if self.async_engine.dialect.name != "postgresql":
+            return
+
+        async with self.async_engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE prompts ADD COLUMN IF NOT EXISTS external_id VARCHAR(36)"))
+            await conn.execute(
+                text(
+                    "ALTER TABLE template_favorites ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id)"
+                )
+            )
+            await conn.execute(
+                text(
+                    """
+                    UPDATE template_favorites tf
+                    SET department_id = t.department_id
+                    FROM templates t
+                    WHERE tf.template_id = t.id AND tf.department_id IS NULL
+                    """
+                )
+            )
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_template_favorites_department_id ON template_favorites (department_id)"
+                )
+            )
+            await conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS template_favorite_folders (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        department_id INTEGER NULL REFERENCES departments(id),
+                        item_type VARCHAR(16) NOT NULL DEFAULT 'prompt',
+                        folder_name VARCHAR(255) NOT NULL,
+                        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+                        CONSTRAINT uq_user_department_item_folder
+                            UNIQUE (user_id, department_id, item_type, folder_name)
+                    )
+                    """
+                )
+            )
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_template_favorite_folders_user_id ON template_favorite_folders (user_id)"
+                )
+            )
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS idx_template_favorite_folders_department_id ON template_favorite_folders (department_id)"
+                )
+            )
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO template_favorite_folders (user_id, department_id, item_type, folder_name)
+                    SELECT DISTINCT tf.user_id, tf.department_id, tf.item_type, tf.folder_path
+                    FROM template_favorites tf
+                    WHERE tf.folder_path IS NOT NULL AND tf.folder_path <> ''
+                    ON CONFLICT (user_id, department_id, item_type, folder_name) DO NOTHING
+                    """
+                )
+            )
+
+            await conn.execute(
+                text(
+                    """
+                    UPDATE prompts
+                    SET external_id = lower(
+                        substr(md5(random()::text || clock_timestamp()::text || id::text), 1, 8)
+                        || '-' || substr(md5(random()::text || id::text), 1, 4)
+                        || '-' || substr(md5(clock_timestamp()::text || random()::text), 1, 4)
+                        || '-' || substr(md5(id::text || random()::text), 1, 4)
+                        || '-' || substr(md5(clock_timestamp()::text || id::text || random()::text), 1, 12)
+                    )
+                    WHERE external_id IS NULL OR external_id = ''
+                    """
+                )
+            )
+
+            await conn.execute(text("ALTER TABLE prompts ALTER COLUMN external_id SET NOT NULL"))
+            await conn.execute(
+                text("CREATE UNIQUE INDEX IF NOT EXISTS ix_prompts_external_id ON prompts (external_id)")
+            )
+
     async def drop_tables(self):
         """删除所有表（慎用！）"""
         self._check_initialized()

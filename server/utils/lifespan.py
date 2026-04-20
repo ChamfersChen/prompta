@@ -14,6 +14,7 @@ async def lifespan(app: FastAPI):
     try:
         pg_manager.initialize()
         await pg_manager.create_business_tables()
+        await pg_manager.ensure_business_schema_compat()
     except Exception as e:
         logger.error(f"Failed to initialize database during startup: {e}")
 
@@ -25,6 +26,6 @@ async def lifespan(app: FastAPI):
     #     logger.warning(f"Run queue redis unavailable on startup: {e}")
 
     yield
-    
+
     await close_queue_clients()
     await pg_manager.close()

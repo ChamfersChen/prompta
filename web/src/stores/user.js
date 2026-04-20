@@ -429,7 +429,7 @@ export const useUserStore = defineStore('user', () => {
           // localStorage.setItem('FORCE_LOGOUT', Date.now().toString())
           sessionStorage.setItem('FORCE_LOGOUT', Date.now().toString())
           // 3. 当前页面跳转
-          window.location.replace('/login_agents_show')
+          window.location.replace('/login')
           stopTokenPoll()
         }
       } catch (e) {

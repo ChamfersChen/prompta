@@ -74,6 +74,11 @@ export const forkTemplate = async (templateId) => {
   return apiPost(`${BASE_URL}/${templateId}/fork`)
 }
 
+// 取消发布模板
+export const unpublishTemplate = async (templateId) => {
+  return apiPost(`${BASE_URL}/${templateId}/unpublish`)
+}
+
 // 导出模板
 export const exportTemplate = async (templateId, format = 'json') => {
   return apiGet(`${BASE_URL}/${templateId}/export`, { format }, true, 'text')

@@ -1,7 +1,6 @@
 from __future__ import annotations
-from fileinput import filename
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.storage.postgres.models_business import Prompt
@@ -26,8 +25,12 @@ class PromptRepository:
         result = await self.db.execute(select(Prompt).where(Prompt.id == id))
         return result.scalar_one_or_none()
 
-    async def get_by_name_path(self,name:str, path: str) -> Prompt | None:
-        result = await self.db.execute(select(Prompt).where(Prompt.path == path).where(Prompt.created_by== name))
+    async def get_by_external_id(self, external_id: str) -> Prompt | None:
+        result = await self.db.execute(select(Prompt).where(Prompt.external_id == external_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_name_path(self, name: str, path: str) -> Prompt | None:
+        result = await self.db.execute(select(Prompt).where(Prompt.path == path).where(Prompt.created_by == name))
         return result.scalar_one_or_none()
 
     async def get_by_path(self, path: str) -> Prompt | None:
@@ -109,6 +112,31 @@ class PromptRepository:
         await self.db.delete(item)
         await self.db.commit()
 
-    async def delete_by_name_path(self,name:str, path: str) -> None:
-        await self.db.delete(await self.get_by_name_path(name,path))
+    async def delete_by_name_path(self, name: str, path: str) -> None:
+        item = await self.get_by_name_path(name, path)
+        if item:
+            await self.db.delete(item)
+            await self.db.commit()
+
+    async def list_by_path_prefix(self, name: str, path_prefix: str) -> list[Prompt]:
+        """获取指定路径前缀的所有文件（用于删除文件夹时）"""
+        normalized_prefix = (path_prefix or "").strip().strip("/")
+        if not normalized_prefix:
+            return []
+
+        result = await self.db.execute(
+            select(Prompt)
+            .where(Prompt.created_by == name)
+            .where(or_(Prompt.path == normalized_prefix, Prompt.path.like(f"{normalized_prefix}/%")))
+        )
+        return list(result.scalars().all())
+
+    async def delete_by_path_prefix(self, name: str, path_prefix: str) -> list[str]:
+        """删除指定路径前缀的所有文件，返回被删除的文件路径列表"""
+        items = await self.list_by_path_prefix(name, path_prefix)
+        deleted_paths = []
+        for item in items:
+            deleted_paths.append(item.path)
+            await self.db.delete(item)
         await self.db.commit()
+        return deleted_paths
