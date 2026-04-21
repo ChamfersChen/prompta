@@ -1193,10 +1193,41 @@ const insertVariableToEditor = async (name) => {
   }
 }
 
+const writeClipboardText = async (text) => {
+  const value = String(text ?? '')
+  if (!value) return
+
+  if (window.isSecureContext && navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  const textArea = document.createElement('textarea')
+  textArea.value = value
+  textArea.setAttribute('readonly', '')
+  textArea.style.position = 'fixed'
+  textArea.style.top = '-9999px'
+  textArea.style.left = '-9999px'
+  document.body.appendChild(textArea)
+  textArea.focus()
+  textArea.select()
+
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } finally {
+    document.body.removeChild(textArea)
+  }
+
+  if (!copied) {
+    throw new Error('Clipboard copy failed')
+  }
+}
+
 const copyCurrentFile = async () => {
   if (!selectedPath.value || selectedIsDir.value) return
   try {
-    await navigator.clipboard.writeText(fileContent.value)
+    await writeClipboardText(fileContent.value)
     message.success('已复制')
     if (selectedPath.value === 'SKILL.md') await fetchPrompts()
   } catch {
@@ -1207,7 +1238,7 @@ const copyCurrentFile = async () => {
 const copyExternalId = async () => {
   if (!selectedExternalId.value) return
   try {
-    await navigator.clipboard.writeText(selectedExternalId.value)
+    await writeClipboardText(selectedExternalId.value)
     message.success('external_id 已复制')
   } catch {
     message.error('复制 external_id 失败')
@@ -1229,7 +1260,7 @@ const copyRenderedContent = async () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await navigator.clipboard.writeText(previewContent.value)
+          await writeClipboardText(previewContent.value)
           message.success('已复制渲染后的内容')
         } catch {
           message.error('复制失败')
@@ -1240,7 +1271,7 @@ const copyRenderedContent = async () => {
   }
   
   try {
-    await navigator.clipboard.writeText(previewContent.value)
+    await writeClipboardText(previewContent.value)
     message.success('已复制渲染后的内容')
   } catch {
     message.error('复制失败')
@@ -1295,7 +1326,7 @@ const copyPromptTestResult = async () => {
   const text = String(promptTestResult.value?.response || '')
   if (!text) return
   try {
-    await navigator.clipboard.writeText(text)
+    await writeClipboardText(text)
     message.success('测试结果已复制')
   } catch {
     message.error('复制测试结果失败')
