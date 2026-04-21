@@ -50,17 +50,17 @@ class RerankerInfo(BaseModel):
 # ============================================================
 
 DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
-    "openai": ChatModelProvider(
-        name="OpenAI",
-        # url="http://127.0.0.1:9998/v1/models",
-        url=f"{os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1")}/models",
-        # base_url="http://127.0.0.1:9998/v1",
-        base_url=os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1"),
-        default="../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf",
-        # default="/models/Qwen3-4B-Instruct-2507",
-        env="NO_API_KEY",
-        models=["../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf", "/models/Qwen3-4B-Instruct-2507"],
-    ),
+    # "openai": ChatModelProvider(
+    #     name="OpenAI",
+    #     # url="http://127.0.0.1:9998/v1/models",
+    #     url=f"{os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1")}/models",
+    #     # base_url="http://127.0.0.1:9998/v1",
+    #     base_url=os.environ.get("OPENAI_API_BASE", "http://127.0.0.1:9998/v1"),
+    #     default="../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf",
+    #     # default="/models/Qwen3-4B-Instruct-2507",
+    #     env="NO_API_KEY",
+    #     models=["../models/Qwen3-8B-GGUF/Qwen3-8B-Q8_0.gguf", "/models/Qwen3-4B-Instruct-2507"],
+    # ),
     # "deepseek": ChatModelProvider(
     #     name="DeepSeek",
     #     url="https://platform.deepseek.com/api-docs/zh-cn/pricing",
@@ -95,43 +95,43 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     #     env="TOGETHER_API_KEY",
     #     models=["meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"],
     # ),
-    "dashscope": ChatModelProvider(
-        name="阿里百炼 (DashScope)",
-        url="https://bailian.console.aliyun.com/?switchAgent=10226727&productCode=p_efm#/model-market",
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        default="qwen-max-latest",
-        env="DASHSCOPE_API_KEY",
-        models=[
-            "qwen-max-latest",
-            "qwen-plus-latest",
-            "qwen-turbo-latest",
-        ],
-    ),
-    "ark": ChatModelProvider(
-        name="豆包（Ark）",
-        url="https://console.volcengine.com/ark/region:ark+cn-beijing/model",
-        base_url="https://ark.cn-beijing.volces.com/api/v3",
-        default="doubao-seed-2-0-lite-260215",
-        env="ARK_API_KEY",
-        models=[
-            "doubao-seed-2-0-pro-260215",
-            "doubao-seed-2-0-lite-260215",
-            "doubao-seed-2-0-mini-260215",
-        ],
-    ),
-    "openrouter": ChatModelProvider(
-        name="OpenRouter",
-        url="https://openrouter.ai/models",
-        base_url="https://openrouter.ai/api/v1",
-        default="x-ai/grok-4.1-fast",
-        env="OPENROUTER_API_KEY",
-        models=[
-            "anthropic/claude-opus-4.6",
-            "anthropic/claude-sonnet-4.5",
-            "x-ai/grok-4.1-fast",
-            "x-ai/grok-4",
-        ],
-    ),
+    # "dashscope": ChatModelProvider(
+    #     name="阿里百炼 (DashScope)",
+    #     url="https://bailian.console.aliyun.com/?switchAgent=10226727&productCode=p_efm#/model-market",
+    #     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    #     default="qwen-max-latest",
+    #     env="DASHSCOPE_API_KEY",
+    #     models=[
+    #         "qwen-max-latest",
+    #         "qwen-plus-latest",
+    #         "qwen-turbo-latest",
+    #     ],
+    # ),
+    # "ark": ChatModelProvider(
+    #     name="豆包（Ark）",
+    #     url="https://console.volcengine.com/ark/region:ark+cn-beijing/model",
+    #     base_url="https://ark.cn-beijing.volces.com/api/v3",
+    #     default="doubao-seed-2-0-lite-260215",
+    #     env="ARK_API_KEY",
+    #     models=[
+    #         "doubao-seed-2-0-pro-260215",
+    #         "doubao-seed-2-0-lite-260215",
+    #         "doubao-seed-2-0-mini-260215",
+    #     ],
+    # ),
+    # "openrouter": ChatModelProvider(
+    #     name="OpenRouter",
+    #     url="https://openrouter.ai/models",
+    #     base_url="https://openrouter.ai/api/v1",
+    #     default="x-ai/grok-4.1-fast",
+    #     env="OPENROUTER_API_KEY",
+    #     models=[
+    #         "anthropic/claude-opus-4.6",
+    #         "anthropic/claude-sonnet-4.5",
+    #         "x-ai/grok-4.1-fast",
+    #         "x-ai/grok-4",
+    #     ],
+    # ),
     # "moonshot": ChatModelProvider(
     #     name="月之暗面",
     #     url="https://platform.moonshot.cn/docs/overview",
@@ -143,26 +143,26 @@ DEFAULT_CHAT_MODEL_PROVIDERS: dict[str, ChatModelProvider] = {
     #         "qwen/qwen3-4b:free"
     #     ],
     # ),
-    "moonshot": ChatModelProvider(
-        name="月之暗面",
-        url="https://platform.moonshot.cn/docs/overview",
-        base_url="https://api.moonshot.cn/v1",
-        default="kimi-latest",
-        env="MOONSHOT_API_KEY",
-        models=[
-            "kimi-latest",
-            "kimi-k2-thinking",
-            "kimi-k2-0905-preview",
-        ],
-    ), # 目前适配有问题 Error code: 400 - {'error': {'message': 'Invalid request: function name is invalid, must start with a letter and can contain letters, numbers, underscores, and dashes', 'type': 'invalid_request_error'}}   # noqa: E501
-    "modelscope": ChatModelProvider(
-        name="ModelScope",
-        url="https://www.modelscope.cn/docs/model-service/API-Inference/intro",
-        base_url="https://api-inference.modelscope.cn/v1/",
-        default="deepseek-ai/DeepSeek-V3.2",
-        env="MODELSCOPE_ACCESS_TOKEN",
-        models=["ZhipuAI/GLM-5", "ZhipuAI/GLM-4.7-Flash", "MiniMax/MiniMax-M2.5", "moonshotai/Kimi-K2.5", ""],
-    ),
+    # "moonshot": ChatModelProvider(
+    #     name="月之暗面",
+    #     url="https://platform.moonshot.cn/docs/overview",
+    #     base_url="https://api.moonshot.cn/v1",
+    #     default="kimi-latest",
+    #     env="MOONSHOT_API_KEY",
+    #     models=[
+    #         "kimi-latest",
+    #         "kimi-k2-thinking",
+    #         "kimi-k2-0905-preview",
+    #     ],
+    # ), # 目前适配有问题 Error code: 400 - {'error': {'message': 'Invalid request: function name is invalid, must start with a letter and can contain letters, numbers, underscores, and dashes', 'type': 'invalid_request_error'}}   # noqa: E501
+    # "modelscope": ChatModelProvider(
+    #     name="ModelScope",
+    #     url="https://www.modelscope.cn/docs/model-service/API-Inference/intro",
+    #     base_url="https://api-inference.modelscope.cn/v1/",
+    #     default="deepseek-ai/DeepSeek-V3.2",
+    #     env="MODELSCOPE_ACCESS_TOKEN",
+    #     models=["ZhipuAI/GLM-5", "ZhipuAI/GLM-4.7-Flash", "MiniMax/MiniMax-M2.5", "moonshotai/Kimi-K2.5", ""],
+    # ),
 }
 
 

@@ -57,8 +57,10 @@
                   tree-class="prompt-tree"
                   v-model:selectedKeys="selectedTreeKeys"
                   v-model:expandedKeys="expandedKeys"
+                  :draggable="!treeSearchQuery.trim()"
                   :tree-data="treeDataForRender"
                   @select="handleTreeSelect"
+                  @drop="handleTreeDrop"
                 >
                   <template #title="{ node }">
                     <a-dropdown :trigger="['contextmenu']">
@@ -914,6 +916,44 @@ const remapPathByRename = (path, oldPath, newPath, isDir) => {
   return path
 }
 
+const hasPublishedTemplatesInPath = (path, isDir) => {
+  return myPublishedTemplates.value.some((tpl) => {
+    const sourcePath = String(tpl.source_path || '')
+    if (!sourcePath) return false
+    if (isDir) {
+      return sourcePath === path || sourcePath.startsWith(`${path}/`)
+    }
+    return sourcePath === path
+  })
+}
+
+const applyPathRemap = (oldPath, newPath, isDir) => {
+  const latestSelectedPath = remapPathByRename(selectedPath.value, oldPath, newPath, isDir)
+  selectedPath.value = latestSelectedPath
+  selectedTreeKeys.value = latestSelectedPath ? [latestSelectedPath] : []
+  recentFiles.value = recentFiles.value
+    .map((item) => ({ ...item, path: remapPathByRename(item.path, oldPath, newPath, isDir) }))
+    .filter((item, index, arr) => arr.findIndex((x) => x.path === item.path) === index)
+  myPublishedTemplates.value = myPublishedTemplates.value.map((tpl) => ({
+    ...tpl,
+    source_path: remapPathByRename(tpl.source_path, oldPath, newPath, isDir)
+  }))
+}
+
+const buildDropTargetPath = (dropInfo) => {
+  const dropNode = dropInfo?.node || {}
+  const targetPath = dropNode.path || dropNode.key || ''
+  const targetIsDir = !!dropNode.is_dir
+  const dropToGap = !!dropInfo?.dropToGap
+  if (!targetPath) return ''
+
+  if (!dropToGap) {
+    return targetIsDir ? targetPath : getParentPath(targetPath)
+  }
+
+  return getParentPath(targetPath)
+}
+
 const findNodeByPath = (nodes, path) => {
   for (const node of nodes || []) {
     if (node.path === path || node.key === path) return node
@@ -1163,6 +1203,61 @@ const handleMoreAction = async (actionKey) => {
   }
 }
 
+const handleTreeDrop = async (info) => {
+  if (treeSearchQuery.value.trim()) {
+    message.warning('请先清空搜索条件，再拖拽调整目录结构')
+    return
+  }
+
+  const dragNode = info?.dragNode || {}
+  const oldPath = dragNode.path || dragNode.key || ''
+  const isDir = !!dragNode.is_dir
+  if (!oldPath) return
+
+  const targetParentPath = buildDropTargetPath(info)
+  const baseName = getPathName(oldPath)
+  const newPath = targetParentPath ? `${targetParentPath}/${baseName}` : baseName
+  if (!newPath || newPath === oldPath) return
+
+  if (isDir && newPath.startsWith(`${oldPath}/`)) {
+    message.error('目录不能拖拽到自身子目录')
+    return
+  }
+
+  if (hasPublishedTemplatesInPath(oldPath, isDir)) {
+    message.warning('该节点包含已发布模板，请先取消发布后再移动')
+    return
+  }
+
+  const allPaths = getAllPaths(treeData.value)
+  if (allPaths.includes(newPath)) {
+    message.error('目标位置已存在同名文件或目录')
+    return
+  }
+
+  renamingNode.value = true
+  try {
+    await promptApi.renamePromptNode({
+      old_path: oldPath,
+      new_path: newPath
+    })
+
+    applyPathRemap(oldPath, newPath, isDir)
+    await reloadTree()
+    await openPath(newPath)
+    message.success('移动成功')
+  } catch (error) {
+    const detail = error?.response?.data?.detail
+    if (typeof detail === 'string' && detail) {
+      message.error(detail)
+    } else {
+      message.error('移动失败')
+    }
+  } finally {
+    renamingNode.value = false
+  }
+}
+
 const removeVariable = (name) => {
   variableList.value = variableList.value.filter(v => v.name !== name)
   delete variableInputValues.value[name]
@@ -1372,13 +1467,7 @@ const openRenameModal = (targetNode = null) => {
   const path = targetNode?.path || selectedPath.value
   if (!path) return
   const isDir = targetNode ? !!targetNode.is_dir : selectedIsDir.value
-  const publishedTemplates = myPublishedTemplates.value.filter((t) => {
-    if (isDir) {
-      return t.source_path && t.source_path.startsWith(`${path}/`)
-    }
-    return t.source_path === path
-  })
-  if (publishedTemplates.length > 0) {
+  if (hasPublishedTemplatesInPath(path, isDir)) {
     message.warning('该节点包含已发布模板，请先取消发布后再重命名')
     return
   }
@@ -1422,16 +1511,7 @@ const handleRenameNode = async () => {
       new_path: newPath
     })
     const isDir = !!renameForm.isDir
-    const latestSelectedPath = remapPathByRename(selectedPath.value, oldPath, newPath, isDir)
-    selectedPath.value = latestSelectedPath
-    selectedTreeKeys.value = latestSelectedPath ? [latestSelectedPath] : []
-    recentFiles.value = recentFiles.value
-      .map((item) => ({ ...item, path: remapPathByRename(item.path, oldPath, newPath, isDir) }))
-      .filter((item, index, arr) => arr.findIndex((x) => x.path === item.path) === index)
-    myPublishedTemplates.value = myPublishedTemplates.value.map((tpl) => ({
-      ...tpl,
-      source_path: remapPathByRename(tpl.source_path, oldPath, newPath, isDir)
-    }))
+    applyPathRemap(oldPath, newPath, isDir)
 
     renameModalVisible.value = false
     await reloadTree()

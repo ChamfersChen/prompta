@@ -103,6 +103,22 @@ async def get_prompt_tree(db: AsyncSession, username: str | None = None) -> list
             _merge_node(forest, node)
         return forest
 
+    def _sort_forest(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        def _sort_nodes(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            sorted_items = sorted(
+                items,
+                key=lambda item: (
+                    0 if item.get("is_dir") else 1,
+                    str(item.get("name") or "").lower(),
+                ),
+            )
+            for item in sorted_items:
+                if item.get("is_dir") and isinstance(item.get("children"), list):
+                    item["children"] = _sort_nodes(item["children"])
+            return sorted_items
+
+        return _sort_nodes(nodes)
+
     repo = PromptRepository(db)
     if username:
         raw_records: list[Prompt] = await repo.list_by_user(username)
@@ -110,6 +126,7 @@ async def get_prompt_tree(db: AsyncSession, username: str | None = None) -> list
         raw_records = await repo.list_all()
     result = [_build_node(r) for r in raw_records]
     result = _merge_forest(result)
+    result = _sort_forest(result)
     return result
 
 

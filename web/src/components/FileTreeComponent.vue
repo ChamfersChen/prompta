@@ -4,6 +4,7 @@
       :selected-keys="selectedKeys"
       :expanded-keys="expandedKeys"
       :tree-data="treeData"
+      :draggable="draggable"
       :show-icon="showIcon"
       :block-node="blockNode"
       :show-line="showLine"
@@ -11,6 +12,7 @@
       @update:selected-keys="handleSelectedUpdate"
       @update:expanded-keys="handleExpandedUpdate"
       @select="handleSelect"
+      @drop="handleDrop"
     >
       <!-- Custom Icon Slot -->
       <template #icon="{ data, expanded }">
@@ -84,6 +86,10 @@ const props = defineProps({
   useFileIcons: {
     type: Boolean,
     default: true
+  },
+  draggable: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -92,7 +98,8 @@ const emit = defineEmits([
   'update:expandedKeys',
   'select',
   'nodeClick',
-  'toggleFolder'
+  'toggleFolder',
+  'drop'
 ])
 
 const handleSelectedUpdate = (keys) => {
@@ -105,6 +112,10 @@ const handleExpandedUpdate = (keys) => {
 
 const handleSelect = (selectedKeys, info) => {
   emit('select', selectedKeys, info)
+}
+
+const handleDrop = (info) => {
+  emit('drop', info)
 }
 
 const handleNodeClick = (data) => {
