@@ -50,4 +50,14 @@ pnpm run dev
 2. `Get请求`: ip:15050/api/open/prompts/{external}
     注意：`external`值从'提示词管理'界面选中文件进行复制
 3. `Header`: x-api-key: {API Key}
-
+4. 响应值：
+```
+{
+	"success": true,
+	"data": {
+		"external_id": "d1356e8b-1163-4530-8183-b29a58901c09",
+		"name": "social_media_planner.md",
+		"content": "你是一位社交媒体运营专家。请根据用户提供的品牌信息、推广目标和目标平台（微信、微博、小红书、抖音等），制定一份7天内容发布计划。每天内容包含：发布时间建议、内容主题、文案要点、配图/视频方向、互动引导话术。风格符合平台调性。"
+	}
+}
+```
