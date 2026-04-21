@@ -64,7 +64,9 @@
           <p class="subtitle">{{ infoStore.branding.subtitle }}</p>
           <!-- <p class="description">{{ infoStore.branding.description }}</p> -->
           <div class="hero-actions">
-            <button class="button-base primary" @click="goToWorkspace">进入工作台</button>
+            <button class="button-base primary" @click="goToWorkspace">
+              {{ userStore.isLoggedIn ? '进入工作台' : '立即登录' }}
+            </button>
           </div>
         </div>
         <div class="insight-panel" v-if="featureCards.length">
@@ -513,10 +515,20 @@ const actionLinks = computed(() => {
 .button-base.primary {
   background: linear-gradient(135deg, var(--main-600), var(--main-500));
   color: var(--gray-0);
-  border-color: transparent;
+  border-color: var(--main-600);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--main-700) 25%, transparent);
 
-  &:hover {
+  &:hover,
+  &:focus {
     background: linear-gradient(135deg, var(--main-700), var(--main-600));
+    border-color: var(--main-700);
+    color: var(--gray-0);
+  }
+
+  &:active {
+    background: linear-gradient(135deg, var(--main-800), var(--main-700));
+    border-color: var(--main-800);
+    color: var(--gray-0);
   }
 }
 

@@ -63,7 +63,9 @@
         </a-menu>
       </template>
     </a-dropdown>
-    <a-button v-else-if="showButton" type="primary" @click="goToLogin"> 登录 </a-button>
+    <a-button v-else-if="showButton" type="primary" class="header-login-btn" @click="goToLogin">
+      登录
+    </a-button>
 
     <!-- 个人资料弹窗 -->
     <a-modal
@@ -548,6 +550,34 @@ const handleAvatarChange = async (info) => {
     background-color: var(--main-10);
     color: var(--main-color);
   }
+}
+
+:deep(.header-login-btn.ant-btn-primary) {
+  background: linear-gradient(135deg, var(--main-600), var(--main-500));
+  border-color: var(--main-600);
+  color: var(--gray-0);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--main-700) 25%, transparent);
+}
+
+:deep(.header-login-btn.ant-btn-primary:hover),
+:deep(.header-login-btn.ant-btn-primary:focus) {
+  background: linear-gradient(135deg, var(--main-700), var(--main-600));
+  border-color: var(--main-700);
+  color: var(--gray-0);
+}
+
+:deep(.header-login-btn.ant-btn-primary:active) {
+  background: linear-gradient(135deg, var(--main-800), var(--main-700));
+  border-color: var(--main-800);
+  color: var(--gray-0);
+}
+
+:deep(.header-login-btn.ant-btn-primary:disabled),
+:deep(.header-login-btn.ant-btn-primary[disabled]) {
+  background: var(--main-200);
+  border-color: var(--main-200);
+  color: var(--main-700);
+  box-shadow: none;
 }
 
 .profile-modal {

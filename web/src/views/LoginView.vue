@@ -25,7 +25,7 @@
           </h1>
         </div>
         <div class="login-top-action">
-          <a-button type="text" size="small" class="back-home-btn" @click="goHome">
+          <a-button type="text" size="small" class="back-home-btn auth-text-btn" @click="goHome">
             返回首页
           </a-button>
         </div>
@@ -123,7 +123,7 @@
                   </a-form-item>
 
                   <a-form-item>
-                    <a-button type="primary" html-type="submit" :loading="loading" block
+                    <a-button type="primary" html-type="submit" :loading="loading" class="auth-primary-btn" block
                       >创建管理员账户</a-button
                     >
                   </a-form-item>
@@ -159,10 +159,7 @@
 
                   <a-form-item>
                     <div class="login-options">
-                      <a-checkbox v-model:checked="rememberMe" @click="showDevMessage"
-                        >记住我</a-checkbox
-                      >
-                      <a class="forgot-password" @click="showDevMessage">忘记密码?</a>
+                      <a-checkbox v-model:checked="rememberMe">记住我</a-checkbox>
                     </div>
                   </a-form-item>
 
@@ -172,6 +169,7 @@
                       html-type="submit"
                       :loading="loading"
                       :disabled="isLocked"
+                      class="auth-primary-btn"
                       block
                       size="large"
                     >
@@ -185,29 +183,6 @@
                     还没有账号？<a @click="goToRegister">立即注册</a>
                   </div>
 
-                  <!-- 第三方登录选项 -->
-                  <div class="third-party-login">
-                    <div class="divider">
-                      <span>其他登录方式</span>
-                    </div>
-                    <div class="login-icons">
-                      <a-tooltip title="微信登录">
-                        <a-button shape="circle" class="login-icon" @click="showDevMessage">
-                          <template #icon><wechat-outlined /></template>
-                        </a-button>
-                      </a-tooltip>
-                      <a-tooltip title="企业微信登录">
-                        <a-button shape="circle" class="login-icon" @click="showDevMessage">
-                          <template #icon><qrcode-outlined /></template>
-                        </a-button>
-                      </a-tooltip>
-                      <a-tooltip title="飞书登录">
-                        <a-button shape="circle" class="login-icon" @click="showDevMessage">
-                          <template #icon><thunderbolt-outlined /></template>
-                        </a-button>
-                      </a-tooltip>
-                    </div>
-                  </div>
                 </a-form>
               </div>
 
@@ -250,9 +225,6 @@ import { healthApi } from '@/apis/system_api'
 import {
   UserOutlined,
   LockOutlined,
-  WechatOutlined,
-  QrcodeOutlined,
-  ThunderboltOutlined,
   ExclamationCircleOutlined
 } from '@ant-design/icons-vue'
 const router = useRouter()
@@ -315,11 +287,6 @@ const adminForm = reactive({
   confirmPassword: '',
   phone_number: '' // 手机号字段（可选）
 })
-
-// 开发中功能提示
-const showDevMessage = () => {
-  message.info('该功能正在开发中，敬请期待！')
-}
 
 const goHome = () => {
   router.push('/')
@@ -397,7 +364,8 @@ const handleLogin = async () => {
 
     await userStore.login({
       loginId: loginForm.loginId,
-      password: loginForm.password
+      password: loginForm.password,
+      rememberMe: rememberMe.value
     })
 
     message.success('登录成功')
@@ -524,6 +492,8 @@ const checkServerHealth = async () => {
 
 // 组件挂载时
 onMounted(async () => {
+  rememberMe.value = !!localStorage.getItem('user_token')
+
   // 如果已登录，跳转到首页
   if (userStore.isLoggedIn) {
     router.push('/')
@@ -615,6 +585,19 @@ onUnmounted(() => {
   }
 }
 
+:deep(.auth-text-btn.ant-btn-text) {
+  border-radius: 10px;
+  color: var(--main-700);
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+:deep(.auth-text-btn.ant-btn-text:hover) {
+  color: var(--main-800);
+  background: var(--main-50);
+  border-color: var(--main-100);
+}
+
 /* Main Content: Card Layout */
 .login-main {
   flex: 1;
@@ -703,6 +686,34 @@ onUnmounted(() => {
   }
 }
 
+:deep(.auth-primary-btn.ant-btn-primary) {
+  background: linear-gradient(135deg, var(--main-600), var(--main-500));
+  border-color: var(--main-600);
+  color: var(--gray-0);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--main-700) 25%, transparent);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:hover),
+:deep(.auth-primary-btn.ant-btn-primary:focus) {
+  background: linear-gradient(135deg, var(--main-700), var(--main-600));
+  border-color: var(--main-700);
+  color: var(--gray-0);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:active) {
+  background: linear-gradient(135deg, var(--main-800), var(--main-700));
+  border-color: var(--main-800);
+  color: var(--gray-0);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:disabled),
+:deep(.auth-primary-btn.ant-btn-primary[disabled]) {
+  background: var(--main-200);
+  border-color: var(--main-200);
+  color: var(--main-700);
+  box-shadow: none;
+}
+
 .register-link {
   text-align: center;
   margin-top: 16px;
@@ -719,72 +730,11 @@ onUnmounted(() => {
   color: #40a9ff;
 }
 
-.third-party-login {
-  margin-top: 16px;
-  .divider {
-    position: relative;
-    text-align: center;
-    margin: 24px 0 16px;
-    &::before,
-    &::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 30%;
-      height: 1px;
-      background-color: var(--gray-200);
-    }
-    &::before {
-      left: 0;
-    }
-    &::after {
-      right: 0;
-    }
-    span {
-      display: inline-block;
-      padding: 0 8px;
-      background-color: var(--gray-0);
-      color: var(--gray-400);
-      font-size: 12px;
-    }
-  }
-
-  .login-icons {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    .login-icon {
-      width: 36px;
-      height: 36px;
-      font-size: 18px;
-      color: var(--gray-500);
-      border-color: var(--gray-300);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      &:hover {
-        color: var(--main-color);
-        border-color: var(--main-color);
-        background-color: var(--main-10);
-        transform: translateY(-2px);
-      }
-    }
-  }
-}
-
 .login-options {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   font-size: 14px;
-}
-
-.forgot-password {
-  color: var(--main-color);
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 .error-message {

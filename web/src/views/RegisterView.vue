@@ -11,7 +11,7 @@
           </h1>
         </div>
         <div class="login-top-action">
-          <a-button type="text" size="small" class="back-home-btn" @click="goToLogin">
+          <a-button type="text" size="small" class="back-home-btn auth-text-btn" @click="goToLogin">
             已有账号？立即登录
           </a-button>
         </div>
@@ -78,6 +78,7 @@
                     type="primary"
                     html-type="submit"
                     :loading="loading"
+                    class="auth-primary-btn"
                     block
                     size="large"
                   >
@@ -245,6 +246,19 @@ onMounted(async () => {
   color: #1890ff;
 }
 
+:deep(.auth-text-btn.ant-btn-text) {
+  border-radius: 10px;
+  color: var(--main-700);
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+:deep(.auth-text-btn.ant-btn-text:hover) {
+  color: var(--main-800);
+  background: var(--main-50);
+  border-color: var(--main-100);
+}
+
 .login-main {
   display: flex;
   align-items: center;
@@ -306,6 +320,34 @@ onMounted(async () => {
   width: 100%;
 }
 
+:deep(.auth-primary-btn.ant-btn-primary) {
+  background: linear-gradient(135deg, var(--main-600), var(--main-500));
+  border-color: var(--main-600);
+  color: var(--gray-0);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--main-700) 25%, transparent);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:hover),
+:deep(.auth-primary-btn.ant-btn-primary:focus) {
+  background: linear-gradient(135deg, var(--main-700), var(--main-600));
+  border-color: var(--main-700);
+  color: var(--gray-0);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:active) {
+  background: linear-gradient(135deg, var(--main-800), var(--main-700));
+  border-color: var(--main-800);
+  color: var(--gray-0);
+}
+
+:deep(.auth-primary-btn.ant-btn-primary:disabled),
+:deep(.auth-primary-btn.ant-btn-primary[disabled]) {
+  background: var(--main-200);
+  border-color: var(--main-200);
+  color: var(--main-700);
+  box-shadow: none;
+}
+
 .login-options {
   display: flex;
   justify-content: space-between;
@@ -313,12 +355,12 @@ onMounted(async () => {
 }
 
 .login-options a {
-  color: #1890ff;
+  color: var(--main-600);
   cursor: pointer;
 }
 
 .login-options a:hover {
-  color: #40a9ff;
+  color: var(--main-700);
 }
 
 @media (max-width: 768px) {

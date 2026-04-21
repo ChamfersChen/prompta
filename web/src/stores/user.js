@@ -3,9 +3,29 @@ import { ref, computed } from 'vue'
 // import { useAgentStore } from './agent'
 
 export const useUserStore = defineStore('user', () => {
+  const TOKEN_KEY = 'user_token'
+
+  const getStoredToken = () => {
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || ''
+  }
+
+  const persistToken = (nextToken, rememberMe = false) => {
+    if (rememberMe) {
+      localStorage.setItem(TOKEN_KEY, nextToken)
+      sessionStorage.removeItem(TOKEN_KEY)
+      return
+    }
+    sessionStorage.setItem(TOKEN_KEY, nextToken)
+    localStorage.removeItem(TOKEN_KEY)
+  }
+
+  const clearTokenStorage = () => {
+    localStorage.removeItem(TOKEN_KEY)
+    sessionStorage.removeItem(TOKEN_KEY)
+  }
+
   // 状态
-  // const token = ref(localStorage.getItem('user_token') || '')
-  const token = ref(sessionStorage.getItem('user_token') || '')
+  const token = ref(getStoredToken())
   const userId = ref(null)
   const username = ref('')
   const userIdLogin = ref('')
@@ -60,9 +80,7 @@ export const useUserStore = defineStore('user', () => {
       departmentId.value = data.department_id || null
       departmentName.value = data.department_name || ''
 
-      // 只保存 token 到本地存储
-      // localStorage.setItem('user_token', data.access_token)
-      sessionStorage.setItem('user_token', data.access_token)
+      persistToken(data.access_token, Boolean(credentials.rememberMe))
 
       return true
     } catch (error) {
@@ -110,9 +128,7 @@ export const useUserStore = defineStore('user', () => {
       departmentId.value = data.department_id || null
       departmentName.value = data.department_name || ''
 
-      // 只保存 token 到本地存储
-      // localStorage.setItem('user_token', data.access_token)
-      sessionStorage.setItem('user_token', data.access_token)
+      persistToken(data.access_token, Boolean(credentials.rememberMe))
 
       return true
     } catch (error) {
@@ -137,9 +153,7 @@ export const useUserStore = defineStore('user', () => {
     // const agentStore = useAgentStore()
     // agentStore.reset()
 
-    // 只清除 token
-    // localStorage.removeItem('user_token')
-    sessionStorage.removeItem('user_token')
+    clearTokenStorage()
   }
 
   async function initialize(admin) {
@@ -170,9 +184,7 @@ export const useUserStore = defineStore('user', () => {
       departmentId.value = data.department_id || null
       departmentName.value = data.department_name || ''
 
-      // 只保存 token 到本地存储
-      // localStorage.setItem('user_token', data.access_token)
-      sessionStorage.setItem('user_token', data.access_token)
+      persistToken(data.access_token, false)
 
       return true
     } catch (error) {
