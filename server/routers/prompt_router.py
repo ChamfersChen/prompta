@@ -254,15 +254,6 @@ async def rename_prompt_node_route(
 ):
     """重命名提示词文件或目录。"""
     try:
-        repo = PromptRepository(db)
-        source_item = await repo.get_by_name_path(current_user.username, payload.old_path)
-        if not source_item or not _check_prompt_access(source_item, current_user):
-            raise HTTPException(status_code=404, detail="源节点不存在")
-
-        target_item = await repo.get_by_name_path(current_user.username, payload.new_path)
-        if target_item:
-            raise HTTPException(status_code=400, detail="目标已存在")
-
         changed_paths = await rename_prompt_node(
             db,
             username=current_user.username,

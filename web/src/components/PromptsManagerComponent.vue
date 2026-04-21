@@ -169,6 +169,7 @@
                           {{ unpublishing ? '取消发布中...' : '取消发布' }}
                         </a-menu-item>
                         <a-menu-divider />
+                        <a-menu-item key="rename" :disabled="!selectedPath">重命名</a-menu-item>
                         <a-menu-item key="delete" danger :disabled="!selectedPath">删除</a-menu-item>
                       </a-menu>
                     </template>
@@ -901,6 +902,18 @@ const getParentPath = (path) => {
 
 const getPathName = (path) => String(path || '').split('/').pop() || path
 
+const remapPathByRename = (path, oldPath, newPath, isDir) => {
+  if (!path) return path
+  if (!isDir) {
+    return path === oldPath ? newPath : path
+  }
+  if (path === oldPath) return newPath
+  if (path.startsWith(`${oldPath}/`)) {
+    return `${newPath}${path.slice(oldPath.length)}`
+  }
+  return path
+}
+
 const findNodeByPath = (nodes, path) => {
   for (const node of nodes || []) {
     if (node.path === path || node.key === path) return node
@@ -1140,6 +1153,11 @@ const handleMoreAction = async (actionKey) => {
     return
   }
 
+  if (actionKey === 'rename') {
+    openRenameModal()
+    return
+  }
+
   if (actionKey === 'delete') {
     confirmDeleteNode()
   }
@@ -1372,12 +1390,30 @@ const handleRenameNode = async () => {
       old_path: oldPath,
       new_path: newPath
     })
+    const isDir = !!renameForm.isDir
+    const latestSelectedPath = remapPathByRename(selectedPath.value, oldPath, newPath, isDir)
+    selectedPath.value = latestSelectedPath
+    selectedTreeKeys.value = latestSelectedPath ? [latestSelectedPath] : []
+    recentFiles.value = recentFiles.value
+      .map((item) => ({ ...item, path: remapPathByRename(item.path, oldPath, newPath, isDir) }))
+      .filter((item, index, arr) => arr.findIndex((x) => x.path === item.path) === index)
+    myPublishedTemplates.value = myPublishedTemplates.value.map((tpl) => ({
+      ...tpl,
+      source_path: remapPathByRename(tpl.source_path, oldPath, newPath, isDir)
+    }))
+
     renameModalVisible.value = false
     await reloadTree()
-    await openPath(newPath)
+    const targetPath = remapPathByRename(selectedPath.value || newPath, oldPath, newPath, isDir) || newPath
+    await openPath(targetPath)
     message.success('重命名成功')
-  } catch {
-    message.error('重命名失败')
+  } catch (error) {
+    const detail = error?.response?.data?.detail
+    if (typeof detail === 'string' && detail) {
+      message.error(detail)
+    } else {
+      message.error('重命名失败')
+    }
   } finally {
     renamingNode.value = false
   }
