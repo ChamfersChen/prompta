@@ -44,3 +44,10 @@ pnpm run dev
 
 6. 访问页面
 等待启动完成后，访问 http://localhost:15173
+
+## API Key 调用 Prompt
+1. `我的 - 系统设置 - API Key` 创建API Key
+2. `Get请求`: ip:15050/api/open/prompts/{external}
+    注意：`external`值从'提示词管理'界面选中文件进行复制
+3. `Header`: x-api-key: {API Key}
+
